@@ -5,14 +5,25 @@ from instanseg import InstanSeg
 from cellstitch.pipeline import full_stitch
 
 
+def segment_single_slice_medium(data, model):
+    res, image_tensor = model.eval_medium_image(
+                    data,
+                    pixel_size,
+                    target="cells",
+                    cleanup_fragments=True,
+                    tile_size=1024,
+                    batch_size=(torch.cuda.mem_get_info()[0] // 1024**3 // 5),
+                )
+    res = np.array(res)[0][0]
+    return res
+
+
 def segment_single_slice(data, model):
     res, image_tensor = model.eval_small_image(
                     data,
                     pixel_size,
                     target="cells",
                     cleanup_fragments=True,
-                    # tile_size=512,
-                    # batch_size=(torch.cuda.mem_get_info()[0] // 1024**3 // 1),
                 )
     res = np.array(res)[0][0]
     return res
@@ -20,15 +31,26 @@ def segment_single_slice(data, model):
 
 def iterative_segmentation(data, empty_res, nslices, model):
     max_cell = 0
-    for xyz in range(nslices):
-        res_slice = segment_single_slice(
-            data[:, :, :, xyz], model
-        )
-        res_slice = res_slice + max_cell * (
-                res_slice != 0
-        )  # Count up from the previous z-slice
-        max_cell = np.max(res_slice)
-        empty_res[:, :, xyz] = res_slice
+    if data.shape[1] > 1024 and data.shape[2] > 1024:  # Check if tiling is required
+        for xyz in range(nslices):
+            res_slice = segment_single_slice_medium(
+                data[:, :, :, xyz], model
+            )
+            res_slice = res_slice + max_cell * (
+                    res_slice != 0
+            )  # Count up from the previous z-slice
+            max_cell = np.max(res_slice)
+            empty_res[:, :, xyz] = res_slice
+    else:
+        for xyz in range(nslices):
+            res_slice = segment_single_slice(
+                data[:, :, :, xyz], model
+            )
+            res_slice = res_slice + max_cell * (
+                    res_slice != 0
+            )  # Count up from the previous z-slice
+            max_cell = np.max(res_slice)
+            empty_res[:, :, xyz] = res_slice
     return empty_res
 
 
