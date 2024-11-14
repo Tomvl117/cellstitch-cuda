@@ -29,7 +29,8 @@ def segment_single_slice(data, model):
     return res
 
 
-def iterative_segmentation(data, empty_res, nslices, model):
+def iterative_segmentation(data, empty_res, model):
+    nslices = data.shape[-1]
     max_cell = 0
     if data.shape[1] > 1024 and data.shape[2] > 1024:  # Check if tiling is required
         batch = (torch.cuda.mem_get_info()[0] // 1024**3 // 5)
@@ -59,7 +60,7 @@ file_path = r"E:\1_DATA\Rheenen\tvl_jr\SP8\2024Nov4_SI_1mg_AIO-3D\2024Nov4_SI_1m
 
 # Read image file
 with tifffile.TiffFile(file_path) as tif:
-    img = tif.asarray().transpose(1, 0, 2, 3)  # CZYX = (15, 41, 1000, 998)
+    img = tif.asarray().transpose(1, 0, 2, 3)  # ZCYX -> CZYX
     img = img.astype(np.float32)
     metadata = tif.imagej_metadata or {}
 
@@ -71,24 +72,21 @@ model = InstanSeg("fluorescence_nuclei_and_cells")
 
 
 # Segment over Z-axis
-num_slices = img.shape[1]
 xy_masks = np.zeros_like(img[0, :, :, :]).astype(int).transpose(1, 2, 0)  # ZYX -> YXZ
 transposed_img = img.transpose(0, 2, 3, 1)  # CZYX -> CYXZ
-xy_masks = iterative_segmentation(transposed_img, xy_masks, num_slices, model).transpose(2, 0, 1)  # YXZ -> ZYX
+xy_masks = iterative_segmentation(transposed_img, xy_masks, model).transpose(2, 0, 1)  # YXZ -> ZYX
 
 
 # Segment over X-axis
-num_slices = img.shape[3]
 yz_masks = np.zeros_like(img[0, :, :, :]).astype(int).transpose(1, 0, 2)  # ZYX -> YZX
 transposed_img = img.transpose(0, 2, 1, 3)  # CZYX -> CYZX
-yz_masks = iterative_segmentation(transposed_img, yz_masks, num_slices, model).transpose(1, 0, 2)  # YZX -> ZYX
+yz_masks = iterative_segmentation(transposed_img, yz_masks, model).transpose(1, 0, 2)  # YZX -> ZYX
 
 
 # Segment over Y-axis
-num_slices = img.shape[2]
 xz_masks = np.zeros_like(img[0, :, :, :]).astype(int).transpose(2, 0, 1)  # ZYX -> XZY
 transposed_img = img.transpose(0, 3, 1, 2)  # CZYX -> CXZY
-xz_masks = iterative_segmentation(transposed_img, xz_masks, num_slices, model).transpose(1, 2, 0)  # XZY -> ZYX
+xz_masks = iterative_segmentation(transposed_img, xz_masks, model).transpose(1, 2, 0)  # XZY -> ZYX
 
 
 # Memory cleanup
