@@ -5,14 +5,14 @@ from instanseg import InstanSeg
 from cellstitch.pipeline import full_stitch
 
 
-def segment_single_slice_medium(data, model):
+def segment_single_slice_medium(data, model, batch_size):
     res, image_tensor = model.eval_medium_image(
                     data,
                     pixel_size,
                     target="cells",
                     cleanup_fragments=True,
                     tile_size=1024,
-                    batch_size=(torch.cuda.mem_get_info()[0] // 1024**3 // 5),
+                    batch_size=batch_size,
                 )
     res = np.array(res)[0][0]
     return res
@@ -32,9 +32,10 @@ def segment_single_slice(data, model):
 def iterative_segmentation(data, empty_res, nslices, model):
     max_cell = 0
     if data.shape[1] > 1024 and data.shape[2] > 1024:  # Check if tiling is required
+        batch = (torch.cuda.mem_get_info()[0] // 1024**3 // 5)
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
-                data[:, :, :, xyz], model
+                data[:, :, :, xyz], model, batch
             )
             res_slice = res_slice + max_cell * (
                     res_slice != 0
@@ -54,7 +55,7 @@ def iterative_segmentation(data, empty_res, nslices, model):
     return empty_res
 
 
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\SP8\2024Nov4_SI_1mg_AIO-3D\raw-crop.tif"
+file_path = r"E:\1_DATA\Rheenen\tvl_jr\SP8\2024Nov4_SI_1mg_AIO-3D\2024Nov4_SI_1mg_AIO-3D.tif"
 
 # Read image file
 with tifffile.TiffFile(file_path) as tif:
@@ -97,4 +98,4 @@ if torch.cuda.is_available():
 
 cellstitch_masks = full_stitch(xy_masks, yz_masks, xz_masks)
 
-tifffile.imwrite("cellstitch_masks.tif", cellstitch_masks)
+tifffile.imwrite(r"E:\1_DATA\Rheenen\tvl_jr\SP8\2024Nov4_SI_1mg_AIO-3D\cellstitch_masks.tif", cellstitch_masks)
