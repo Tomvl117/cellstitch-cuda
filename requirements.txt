@@ -1,6 +1,0 @@
-instanseg-torch >= 0.0.5
-cellpose >= 3.1.0
-POT >= 0.8.1
-sphinx
-sphinxcontrib-apidoc
-tifffile
