@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 
 class Frame:
@@ -8,16 +7,13 @@ class Frame:
         self.mask = mask
 
     def get_lbls(self):
-        return torch.unique(self.get_mask())
-
-    def get_mask(self):
-        return torch.from_numpy(self.mask)
+        return np.unique(self.mask)
 
     def get_sizes(self):
         """
         Calculate sizes of each mask from frame.
         """
-        sizes = [torch.sum(self.get_mask() == lbl) for lbl in self.get_lbls()]
+        sizes = [(self.mask == lbl).sum() for lbl in self.get_lbls()]
         return np.array(sizes)
 
     def is_empty(self):
