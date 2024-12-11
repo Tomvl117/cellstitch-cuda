@@ -4,9 +4,79 @@ import tifffile
 from instanseg import InstanSeg
 from cellstitch.pipeline import full_stitch
 import os
+from joblib import Parallel, delayed
 
 
-def segment_single_slice_medium(d, model, batch_size, pixel):
+def histogram_correct(images: np.array, match: str = "first"):
+    # cache image dtype
+    dtype = images.dtype
+
+    assert (
+        3 <= len(images.shape) <= 4
+    ), f"Expected 3d or 4d image stack, instead got {len(images.shape)} dimensions"
+
+    avail_match_methods = ["first", "neighbor"]
+    assert (
+        match in avail_match_methods
+    ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
+
+    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
+
+    args_list = [
+        (
+            channel,
+            match,
+        )
+        for channel in images
+    ]
+
+    images = Parallel(n_jobs=-1)(delayed(_correct)(*args) for args in args_list)
+
+    images = np.array(images, dtype=dtype)
+
+    images = images.transpose(1, 0, 2, 3)  # CZYX --> ZCYX
+
+    return images
+
+
+def _correct(channel, match):
+
+    channel = np.array(channel)
+    k, m, n = channel.shape
+    pixel_size = m * n
+
+    # flatten the last dimensions and calculate normalized cdf
+    channel = channel.reshape(k, -1)
+    values, cdfs = [], []
+
+    for i in range(k):
+
+        if i > 0:
+            if match == "first":
+                match_ix = 0
+            else:
+                match_ix = i - 1
+
+            val, ix, cnt = np.unique(
+                channel[i, ...].flatten(), return_inverse=True, return_counts=True
+            )
+            cdf = np.cumsum(cnt) / pixel_size
+
+            interpolated = np.interp(cdf, cdfs[match_ix], values[match_ix])
+            channel[i, ...] = interpolated[ix]
+
+        if i == 0 or match == "neighbor":
+            val, cnt = np.unique(channel[i, ...].flatten(), return_counts=True)
+            cdf = np.cumsum(cnt) / pixel_size
+            values.append(val)
+            cdfs.append(cdf)
+
+    channel = channel.reshape(k, m, n)
+
+    return channel
+
+
+def segment_single_slice_medium(d, model, batch_size, pixel=None):
     res, image_tensor = model.eval_medium_image(
         d,
         pixel,
@@ -44,7 +114,7 @@ def segment_single_slice_medium(d, model, batch_size, pixel):
     return nuclear_cells
 
 
-def segment_single_slice_small(d, model, pixel):
+def segment_single_slice_small(d, model, pixel=None):
     res, image_tensor = model.eval_small_image(
         d,
         pixel,
@@ -80,7 +150,7 @@ def segment_single_slice_small(d, model, pixel):
     return nuclear_cells
 
 
-def iterative_segmentation(d, model, pixel):
+def iterative_segmentation(d, model, pixel=None):
     empty_res = np.zeros_like(d[0])
     nslices = d.shape[-1]
     if d.shape[1] < 1024 or d.shape[2] < 1024:  # For small images
@@ -104,8 +174,10 @@ out_path = os.path.split(file_path)[0]
 
 # Read image file
 with tifffile.TiffFile(file_path) as tif:
-    img = tif.asarray().transpose(1, 0, 2, 3)  # ZCYX -> CZYX
+    img = tif.asarray()  # ZCYX
     metadata = tif.imagej_metadata or {}
+
+# img = histogram_correct(img)
 
 # Instanseg-based pipeline
 x_resolution = 2.2
