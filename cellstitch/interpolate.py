@@ -1,7 +1,7 @@
 import os
 import ot
 import ot.plot
-import numpy as np
+import cupy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy import ndimage as ndi

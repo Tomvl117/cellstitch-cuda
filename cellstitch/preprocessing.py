@@ -1,4 +1,4 @@
-import numpy as np
+import cupy as np
 import torch
 from scipy.ndimage import zoom
 from joblib import Parallel, delayed

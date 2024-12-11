@@ -1,5 +1,5 @@
 import ot
-import numpy as np
+import cupy as np
 from skimage import color
 from cellstitch.frame import *
 import matplotlib.pyplot as plt

@@ -7,8 +7,8 @@ from cellstitch.pipeline import full_stitch
 from cellstitch import preprocessing as pp
 
 
-stitch_method = "iou"  # "iou" or "cellstitch"
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed2\unmixed.tif"
+stitch_method = "cellstitch"  # "iou" or "cellstitch"
+file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed\unmixed.tif"
 out_path = os.path.split(file_path)[0]
 
 mode = "nuclei"  # Segmentation mode: "nuclei" or "cells" or "nuclei_cells"

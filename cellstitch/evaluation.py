@@ -1,5 +1,5 @@
 import gc
-import numpy as np
+import cupy as np
 
 from cellpose import metrics as cp_metrics
 from cellpose import utils as cp_utils
