@@ -224,32 +224,33 @@ with tifffile.TiffFile(file_path) as tif:
 x_resolution = 2.2
 pixel_size = 1 / x_resolution
 z_resolution = 3.5
-anisotropy = int(z_resolution / pixel_size)
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
 # Segment over Z-axis
-transposed_img = img.transpose(0, 2, 3, 1)  # CZYX -> CYXZ
+transposed_img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
 xy_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(2, 0, 1)  # YXZ -> ZYX
+tifffile.imwrite(os.path.join(out_path, "xy_masks.tif"), xy_masks)
 
 # Segment over X-axis
-transposed_img = img.transpose(0, 2, 1, 3)  # CZYX -> CYZX
+transposed_img = img.transpose(1, 2, 0, 3)  # ZCYX -> CYZX
+transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
 yz_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(1, 0, 2)  # YZX -> ZYX
+tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
 
 # Segment over Y-axis
-transposed_img = img.transpose(0, 3, 1, 2)  # CZYX -> CXZY
+transposed_img = img.transpose(1, 3, 0, 2)  # ZCYX -> CXZY
+transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
 xz_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(1, 2, 0)  # XZY -> ZYX
+tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
 
 # Memory cleanup
 del model
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
 
-tifffile.imwrite(os.path.join(out_path, "xy_masks.tif"), xy_masks)
-tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
-tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
+print("Stitching...")
 
 cellstitch_masks = full_stitch(xy_masks, yz_masks, xz_masks)
 
-tifffile.imwrite(os.path.join(out_path, "cellstitch_masks.tif"),
-                 cellstitch_masks)
+tifffile.imwrite(os.path.join(out_path, "cellstitch_masks.tif"), cellstitch_masks)
