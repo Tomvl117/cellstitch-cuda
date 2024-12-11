@@ -25,6 +25,19 @@ z_resolution = 3.5
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
+import time
+
+start_time = time.time()
+img_np = pp.histogram_correct(img)
+print("Numpy time:", time.time() - start_time)
+
+import cupy
+img_cupy = cupy.asarray(img)
+
+start_time = time.time()
+img_cupy2 = pp.histogram_correct_cupy(img_cupy)
+print("Cupy time:", time.time() - start_time)
+
 img = pp.histogram_correct(img)
 
 # Segment over Z-axis
