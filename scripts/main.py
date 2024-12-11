@@ -39,7 +39,9 @@ if stitch_method == "iou":
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
 
-    iou_masks = stitch3D(yx_masks)
+    print("Running IoU stitching...")
+
+    iou_masks = stitch3D(yx_masks, stitch_threshold=0.25)
     tifffile.imwrite(os.path.join(out_path, "iou_masks.tif"), iou_masks)
 
 elif stitch_method == "cellstitch":
@@ -63,7 +65,7 @@ elif stitch_method == "cellstitch":
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
 
-    print("Stitching...")
+    print("Running CellStitch stitching...")
 
     cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks)
 
