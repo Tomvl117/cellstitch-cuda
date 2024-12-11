@@ -34,9 +34,7 @@ def crop_downscale_mask(masks: np.array, pad: int = 0, pixel=None, z_res=None):
 
     masks = Parallel(n_jobs=-1)(delayed(_scale)(*args) for args in args_list)
 
-    masks = np.stack(masks)
-
-    masks.transpose(1, 2, 0)  # kiZ --> iZk
+    masks = np.stack(masks).transpose(1, 2, 0)  # kiZ --> iZk
 
     return masks
 
