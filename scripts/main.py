@@ -273,7 +273,7 @@ x_resolution = 2.2
 pixel_size = 1 / x_resolution
 z_resolution = 3.5
 
-mode = "nuclei"  # 'nuclei' or 'cells' or 'nuclei_cells'
+mode = "nuclei"  # "nuclei" or "cells" or "nuclei_cells"
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
 img = histogram_correct(img)
