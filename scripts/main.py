@@ -268,15 +268,15 @@ with tifffile.TiffFile(file_path) as tif:
     img = tif.asarray()  # ZCYX
     metadata = tif.imagej_metadata or {}
 
-img = histogram_correct(img)
-
 # Instanseg-based pipeline
 x_resolution = 2.2
 pixel_size = 1 / x_resolution
 z_resolution = 3.5
-mode = "nuclei"  # 'nuclei' or 'cells' or 'nuclei_cells'
 
+mode = "nuclei"  # 'nuclei' or 'cells' or 'nuclei_cells'
 model = InstanSeg("fluorescence_nuclei_and_cells")
+
+img = histogram_correct(img)
 
 # Segment over Z-axis
 transposed_img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
@@ -304,6 +304,6 @@ if torch.cuda.is_available():
 
 print("Stitching...")
 
-cellstitch_masks = full_stitch(xy_masks, yz_masks, xz_masks)
+cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks)
 
 tifffile.imwrite(os.path.join(out_path, "cellstitch_masks.tif"), cellstitch_masks)
