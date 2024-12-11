@@ -148,7 +148,7 @@ def _correct(channel, match):
     return channel
 
 
-def segment_single_slice_medium(d, model, batch_size, pixel=None, m="nuclei_cells"):
+def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nuclei_cells"):
     res, image_tensor = model.eval_medium_image(
         d,
         pixel,
@@ -193,7 +193,7 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None, m="nuclei_cell
     return res
 
 
-def segment_single_slice_small(d, model, pixel=None, m="nuclei_cells"):
+def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
     res, image_tensor = model.eval_small_image(
         d,
         pixel,
@@ -236,7 +236,7 @@ def segment_single_slice_small(d, model, pixel=None, m="nuclei_cells"):
     return res
 
 
-def iterative_segmentation(d, model, pixel=None, m="nuclei_cells"):
+def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
     empty_res = np.zeros_like(d[0])
     nslices = d.shape[-1]
     if d.shape[1] < 1024 or d.shape[2] < 1024:  # For small images
