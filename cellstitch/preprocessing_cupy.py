@@ -1,4 +1,5 @@
 import cupy as cp
+import numpy as np
 import torch
 from cupyx.scipy.ndimage import zoom
 
@@ -45,7 +46,7 @@ def upscale_pad_img(images: cp.array, pixel=None, z_res=None):
 
     if images.shape[-2] < 512:
         padding_width = (512 - images.shape[-2]) // 2
-        images = np.pad(
+        images = cp.pad(
             images,
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
             constant_values=0
@@ -60,7 +61,7 @@ def _scale(plane, zoom_factors, order):
     return plane
 
 
-def histogram_correct(images: cp.array, match: str = "first"):
+def histogram_correct(images, match: str = "first"):
     # cache image dtype
     dtype = images.dtype
 
@@ -73,11 +74,11 @@ def histogram_correct(images: cp.array, match: str = "first"):
         match in avail_match_methods
     ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
 
-    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
+    images = cp.asarray(images.transpose(1, 0, 2, 3))  # ZCYX --> CZYX
 
     images = [_correct(channel, match) for channel in images]
 
-    images = cp.array(images, dtype=dtype).transpose(1, 0, 2, 3)  # CZYX --> ZCYX
+    images = np.stack(images, axis=1, dtype=dtype)  # ZCYX
 
     return images
 
@@ -116,7 +117,7 @@ def _correct(channel, match):
 
     channel = channel.reshape(k, m, n)
 
-    return channel
+    return channel.get()
 
 
 def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nuclei_cells"):
@@ -210,7 +211,6 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
 def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
     empty_res = cp.zeros_like(d[0])
     nslices = d.shape[-1]
-    d = d.get()
     if d.shape[1] < 1024 or d.shape[2] < 1024:  # For small images
         for xyz in range(nslices):
             res_slice = segment_single_slice_small(
