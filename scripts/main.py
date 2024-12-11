@@ -117,7 +117,7 @@ def _correct(channel, match):
     return channel
 
 
-def segment_single_slice_medium(d, model, batch_size, pixel=None):
+def segment_single_slice_medium(d, model, batch_size, pixel=None, m="nuclei_cells"):
     res, image_tensor = model.eval_medium_image(
         d,
         pixel,
@@ -126,91 +126,105 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None):
         tile_size=1024,
         batch_size=batch_size,
     )
-    res = np.array(res[0], dtype='uint')
 
-    # Initialize new label ID
-    new_label_id = 0
+    if m == "nuclei":
+        res = np.array(res[0][0], dtype='uint')
+    elif m == "cells":
+        res = np.array(res[0][1], dtype='uint')
+    elif m == "nuclei_cells":
+        res = np.array(res[0], dtype='uint')
 
-    nuclear_cells = np.zeros_like(res[1])
+        # Initialize new label ID
+        new_label_id = 0
 
-    for label_id in np.unique(res[0]):
-        if label_id != 0:
-            # Find the coordinates of the current label in the nuclei layer
-            coords = np.argwhere(res[0] == label_id)
+        nuclear_cells = np.zeros_like(res[1])
 
-            # Check if any of these coordinates are also labeled in the cell layer
-            colocalized = False
-            for coord in coords:
-                if res[1][coord[0], coord[1]] != 0:
-                    # If the nuclear label is colocalized with a cell label, save the cell label
-                    cell_id = res[1][coord[0], coord[1]]
-                    colocalized = True
-                    break
+        for label_id in np.unique(res[0]):
+            if label_id != 0:
+                # Find the coordinates of the current label in the nuclei layer
+                coords = np.argwhere(res[0] == label_id)
 
-            # If colocalized, assign a new label ID
-            if colocalized:
-                nuclear_cells[res[1] == cell_id] = new_label_id
-                new_label_id += 1
+                # Check if any of these coordinates are also labeled in the cell layer
+                colocalized = False
+                for coord in coords:
+                    if res[1][coord[0], coord[1]] != 0:
+                        # If the nuclear label is colocalized with a cell label, save the cell label
+                        cell_id = res[1][coord[0], coord[1]]
+                        colocalized = True
+                        break
 
-    return nuclear_cells
+                # If colocalized, assign a new label ID
+                if colocalized:
+                    nuclear_cells[res[1] == cell_id] = new_label_id
+                    new_label_id += 1
+        res = nuclear_cells
+
+    return res
 
 
-def segment_single_slice_small(d, model, pixel=None):
+def segment_single_slice_small(d, model, pixel=None, m="nuclei_cells"):
     res, image_tensor = model.eval_small_image(
         d,
         pixel,
         target="all_outputs",
         cleanup_fragments=True,
     )
-    res = np.array(res[0], dtype='uint')
 
-    # Initialize new label ID
-    new_label_id = 0
+    if m == "nuclei":
+        res = np.array(res[0][0], dtype='uint')
+    elif m == "cells":
+        res = np.array(res[0][1], dtype='uint')
+    elif m == "nuclei_cells":
+        res = np.array(res[0], dtype='uint')
 
-    nuclear_cells = np.zeros_like(res[1])
+        # Initialize new label ID
+        new_label_id = 0
 
-    for label_id in np.unique(res[0]):
-        if label_id != 0:
-            # Find the coordinates of the current label in the nuclei layer
-            coords = np.argwhere(res[0] == label_id)
+        nuclear_cells = np.zeros_like(res[1])
 
-            # Check if any of these coordinates are also labeled in the cell layer
-            colocalized = False
-            for coord in coords:
-                if res[1][coord[0], coord[1]] != 0:
-                    # If the nuclear label is colocalized with a cell label, save the cell label
-                    cell_id = res[1][coord[0], coord[1]]
-                    colocalized = True
-                    break
+        for label_id in np.unique(res[0]):
+            if label_id != 0:
+                # Find the coordinates of the current label in the nuclei layer
+                coords = np.argwhere(res[0] == label_id)
 
-            # If colocalized, assign a new label ID
-            if colocalized:
-                nuclear_cells[res[1] == cell_id] = new_label_id
-                new_label_id += 1
+                # Check if any of these coordinates are also labeled in the cell layer
+                colocalized = False
+                for coord in coords:
+                    if res[1][coord[0], coord[1]] != 0:
+                        # If the nuclear label is colocalized with a cell label, save the cell label
+                        cell_id = res[1][coord[0], coord[1]]
+                        colocalized = True
+                        break
 
-    return nuclear_cells
+                # If colocalized, assign a new label ID
+                if colocalized:
+                    nuclear_cells[res[1] == cell_id] = new_label_id
+                    new_label_id += 1
+        res = nuclear_cells
+
+    return res
 
 
-def iterative_segmentation(d, model, pixel=None):
+def iterative_segmentation(d, model, pixel=None, m="nuclei_cells"):
     empty_res = np.zeros_like(d[0])
     nslices = d.shape[-1]
     if d.shape[1] < 1024 or d.shape[2] < 1024:  # For small images
         for xyz in range(nslices):
             res_slice = segment_single_slice_small(
-                d[:, :, :, xyz], model, pixel
+                d[:, :, :, xyz], model, pixel, m
             )
             empty_res[:, :, xyz] = res_slice
     else:  # For large images
         batch = (torch.cuda.mem_get_info()[0] // 1024 ** 3 // 4)
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
-                d[:, :, :, xyz], model, batch, pixel
+                d[:, :, :, xyz], model, batch, pixel, m
             )  # Count up from the previous z-slice
             empty_res[:, :, xyz] = res_slice
     return empty_res
 
 
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\raw.tif"  # Shape: 101, 15, 600, 700
+file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed\unmixed.tif"  # Shape: 101, 15, 600, 700
 out_path = os.path.split(file_path)[0]
 
 # Read image file
@@ -218,30 +232,31 @@ with tifffile.TiffFile(file_path) as tif:
     img = tif.asarray()  # ZCYX
     metadata = tif.imagej_metadata or {}
 
-# img = histogram_correct(img)
+img = histogram_correct(img)
 
 # Instanseg-based pipeline
 x_resolution = 2.2
 pixel_size = 1 / x_resolution
 z_resolution = 3.5
+mode = "nuclei"  # 'nuclei' or 'cells' or 'nuclei_cells'
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
 # Segment over Z-axis
 transposed_img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
-xy_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(2, 0, 1)  # YXZ -> ZYX
+xy_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
 tifffile.imwrite(os.path.join(out_path, "xy_masks.tif"), xy_masks)
 
 # Segment over X-axis
 transposed_img = img.transpose(1, 2, 0, 3)  # ZCYX -> CYZX
 transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
-yz_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(1, 0, 2)  # YZX -> ZYX
+yz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(1, 0, 2)  # YZX -> ZYX
 tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
 
 # Segment over Y-axis
 transposed_img = img.transpose(1, 3, 0, 2)  # ZCYX -> CXZY
 transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
-xz_masks = iterative_segmentation(transposed_img, model, pixel_size).transpose(1, 2, 0)  # XZY -> ZYX
+xz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(1, 2, 0)  # XZY -> ZYX
 tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
 
 # Memory cleanup
