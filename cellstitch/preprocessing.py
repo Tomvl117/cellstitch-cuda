@@ -1,4 +1,3 @@
-import cupy as cp
 import numpy as np
 import torch
 from scipy.ndimage import zoom
@@ -112,38 +111,6 @@ def histogram_correct(images: np.array, match: str = "first"):
     return images
 
 
-def histogram_correct_cupy(images: cp.array, match: str = "first"):
-    # cache image dtype
-    dtype = images.dtype
-
-    assert (
-        3 <= len(images.shape) <= 4
-    ), f"Expected 3d or 4d image stack, instead got {len(images.shape)} dimensions"
-
-    avail_match_methods = ["first", "neighbor"]
-    assert (
-        match in avail_match_methods
-    ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
-
-    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
-
-    args_list = [
-        (
-            channel,
-            match,
-        )
-        for channel in images
-    ]
-
-    images = Parallel(n_jobs=-1)(delayed(_correct_cupy)(*args) for args in args_list)
-
-    images = cp.array(images, dtype=dtype)
-
-    images = images.transpose(1, 0, 2, 3)  # CZYX --> ZCYX
-
-    return images
-
-
 def _correct(channel, match):
 
     channel = np.array(channel)
@@ -173,43 +140,6 @@ def _correct(channel, match):
         if i == 0 or match == "neighbor":
             val, cnt = np.unique(channel[i, ...].flatten(), return_counts=True)
             cdf = np.cumsum(cnt) / pixel_size
-            values.append(val)
-            cdfs.append(cdf)
-
-    channel = channel.reshape(k, m, n)
-
-    return channel
-
-
-def _correct_cupy(channel, match):
-
-    channel = cp.array(channel)
-    k, m, n = channel.shape
-    pixel_size = m * n
-
-    # flatten the last dimensions and calculate normalized cdf
-    channel = channel.reshape(k, -1)
-    values, cdfs = [], []
-
-    for i in range(k):
-
-        if i > 0:
-            if match == "first":
-                match_ix = 0
-            else:
-                match_ix = i - 1
-
-            val, ix, cnt = cp.unique(
-                channel[i, ...].flatten(), return_inverse=True, return_counts=True
-            )
-            cdf = cp.cumsum(cnt) / pixel_size
-
-            interpolated = cp.interp(cdf, cdfs[match_ix], values[match_ix])
-            channel[i, ...] = interpolated[ix]
-
-        if i == 0 or match == "neighbor":
-            val, cnt = cp.unique(channel[i, ...].flatten(), return_counts=True)
-            cdf = cp.cumsum(cnt) / pixel_size
             values.append(val)
             cdfs.append(cdf)
 
