@@ -8,6 +8,39 @@ import os
 from joblib import Parallel, delayed
 
 
+def crop_downscale_mask(masks: np.array, pad: int = 0, pixel=None, z_res=None):
+    if not pixel:
+        pixel = 1
+    if not z_res:
+        z_res = 1
+
+    masks = masks.transpose(2, 0, 1)  # iZk --> kiZ
+
+    if pad != 0:
+        masks = masks[:, :, pad:-pad]
+
+    anisotropy = z_res / pixel
+    zoom_factors = (1, 1, 1/anisotropy)
+    order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
+
+    args_list = [
+        (
+            plane,
+            zoom_factors,
+            order,
+        )
+        for plane in masks
+    ]
+
+    masks = Parallel(n_jobs=-1)(delayed(_scale)(*args) for args in args_list)
+
+    masks = np.stack(masks)
+
+    masks.transpose(1, 2, 0)  # kiZ --> iZk
+
+    return masks
+
+
 def upscale_pad_img(images: np.array, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
@@ -17,19 +50,24 @@ def upscale_pad_img(images: np.array, pixel=None, z_res=None):
     anisotropy = z_res / pixel
     zoom_factors = (1, 1, anisotropy)
 
+    order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
+
     images = images.transpose(3, 0, 1, 2)  # Cijk --> kCij
 
     args_list = [
         (
             plane,
             zoom_factors,
+            order,
         )
         for plane in images
     ]
 
-    images = Parallel(n_jobs=-1)(delayed(_upscale)(*args) for args in args_list)
+    images = Parallel(n_jobs=-1)(delayed(_scale)(*args) for args in args_list)
 
     images = np.stack(images).transpose(1, 2, 3, 0)  # kCij --> Cijk
+
+    padding_width = 0
 
     if images.shape[-2] < 512:
         padding_width = (512 - images.shape[-2]) // 2
@@ -39,11 +77,11 @@ def upscale_pad_img(images: np.array, pixel=None, z_res=None):
             constant_values=0
         )
 
-    return images
+    return images, padding_width
 
 
-def _upscale(plane, zoom_factors):
-    plane = zoom(np.array(plane), zoom_factors, order=1)
+def _scale(plane, zoom_factors, order):
+    plane = zoom(np.array(plane), zoom_factors, order=order)
 
     return plane
 
@@ -224,7 +262,7 @@ def iterative_segmentation(d, model, pixel=None, m="nuclei_cells"):
     return empty_res
 
 
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed\unmixed.tif"  # Shape: 101, 15, 600, 700
+file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed\unmixed.tif"
 out_path = os.path.split(file_path)[0]
 
 # Read image file
@@ -244,19 +282,21 @@ model = InstanSeg("fluorescence_nuclei_and_cells")
 
 # Segment over Z-axis
 transposed_img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
-xy_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
-tifffile.imwrite(os.path.join(out_path, "xy_masks.tif"), xy_masks)
+yx_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
+tifffile.imwrite(os.path.join(out_path, "yx_masks.tif"), yx_masks)
 
 # Segment over X-axis
 transposed_img = img.transpose(1, 2, 0, 3)  # ZCYX -> CYZX
-transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
-yz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(1, 0, 2)  # YZX -> ZYX
+transposed_img, padding = upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
+yz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode)
+yz_masks = crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2)  # YZX -> ZYX
 tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
 
 # Segment over Y-axis
 transposed_img = img.transpose(1, 3, 0, 2)  # ZCYX -> CXZY
-transposed_img = upscale_pad_img(transposed_img, pixel_size, z_resolution)
-xz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode).transpose(1, 2, 0)  # XZY -> ZYX
+transposed_img, padding = upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
+xz_masks = iterative_segmentation(transposed_img, model, pixel_size, mode)
+xz_masks = crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0)  # XZY -> ZYX
 tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
 
 # Memory cleanup
