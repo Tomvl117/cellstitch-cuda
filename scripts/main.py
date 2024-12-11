@@ -3,8 +3,49 @@ import torch
 import tifffile
 from instanseg import InstanSeg
 from cellstitch.pipeline import full_stitch
+from scipy.ndimage import zoom
 import os
 from joblib import Parallel, delayed
+
+
+def upscale_pad_img(images: np.array, pixel=None, z_res=None):
+    if not pixel:
+        pixel = 1
+    if not z_res:
+        z_res = 1
+
+    anisotropy = z_res / pixel
+    zoom_factors = (1, 1, anisotropy)
+
+    images = images.transpose(3, 0, 1, 2)  # Cijk --> kCij
+
+    args_list = [
+        (
+            plane,
+            zoom_factors,
+        )
+        for plane in images
+    ]
+
+    images = Parallel(n_jobs=-1)(delayed(_upscale)(*args) for args in args_list)
+
+    images = np.stack(images).transpose(1, 2, 3, 0)  # kCij --> Cijk
+
+    if images.shape[-2] < 512:
+        padding_width = (512 - images.shape[-2]) // 2
+        images = np.pad(
+            images,
+            ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
+            constant_values=0
+        )
+
+    return images
+
+
+def _upscale(plane, zoom_factors):
+    plane = zoom(np.array(plane), zoom_factors, order=1)
+
+    return plane
 
 
 def histogram_correct(images: np.array, match: str = "first"):
