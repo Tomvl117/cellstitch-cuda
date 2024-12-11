@@ -20,7 +20,7 @@ def crop_downscale_mask(masks: np.array, pad: int = 0, pixel=None, z_res=None):
         masks = masks[:, :, pad:-pad]
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1, 1/anisotropy)
+    zoom_factors = (1, 1/anisotropy)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     args_list = [
