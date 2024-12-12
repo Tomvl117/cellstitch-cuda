@@ -127,7 +127,7 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nucl
         d,
         pixel,
         target="all_outputs",
-        cleanup_fragments=False,
+        cleanup_fragments=True,
         tile_size=1024,
         batch_size=batch_size,
     )
@@ -172,7 +172,7 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
         d,
         pixel,
         target="all_outputs",
-        cleanup_fragments=False,
+        cleanup_fragments=True,
     )
 
     if m == "nuclei":
