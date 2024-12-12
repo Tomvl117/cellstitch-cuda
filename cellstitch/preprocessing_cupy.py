@@ -14,14 +14,16 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
 
     if pad != 0:
         masks = masks[:, :, pad:-pad]
+    masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
     zoom_factors = (1, 1/anisotropy)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    masks = [_scale(cp.asarray(mask), zoom_factors, order) for mask in masks]
+    masks = [_scale(mask, zoom_factors, order) for mask in masks]
 
-    masks = np.stack(masks, axis=2)  # iZk
+    masks = cp.stack(masks, axis=2)  # iZk
+    cp._default_memory_pool.free_all_blocks()
 
     return masks
 
@@ -36,18 +38,20 @@ def upscale_pad_img(images, pixel=None, z_res=None):
     zoom_factors = (1, 1, anisotropy)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    images = cp.asarray(images.transpose(3, 0, 1, 2))  # Cijk --> kCij
+    images = cp.asarray(images)
+    images = images.transpose(3, 0, 1, 2)  # Cijk --> kCij
 
     images = [_scale(plane, zoom_factors, order) for plane in images]
 
-    images = np.stack(images, axis=3)  # Cijk
+    images = cp.stack(images, axis=3)  # Cijk
+    cp._default_memory_pool.free_all_blocks()
 
     padding_width = 0
 
     if images.shape[-2] < 512:
         padding_width = (512 - images.shape[-2]) // 2
         images = np.pad(
-            images,
+            images.get(),
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
             constant_values=0
         )
@@ -58,7 +62,7 @@ def upscale_pad_img(images, pixel=None, z_res=None):
 def _scale(plane, zoom_factors, order):
     plane = zoom(plane, zoom_factors, order=order)
 
-    return plane.get()
+    return plane
 
 
 def histogram_correct(images, match: str = "first"):

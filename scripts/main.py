@@ -43,23 +43,27 @@ if stitch_method == "iou":
 
     print("Running IoU stitching...")
 
-    iou_masks = stitch3D(yx_masks.get(), stitch_threshold=0.25)
+    iou_masks = stitch3D(yx_masks, stitch_threshold=0.25)
     tifffile.imwrite(os.path.join(out_path, "iou_masks.tif"), iou_masks)
 
 elif stitch_method == "cellstitch":
 
     # Segment over X-axis
     transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-    transposed_img, padding = pp.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
-    yz_masks = pp.segmentation(transposed_img, model, pixel_size, mode)
-    yz_masks = pp.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2)  # YZX -> ZYX
+    transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
+    cp._default_memory_pool.free_all_blocks()
+    yz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
+    yz_masks = ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2)  # YZX -> ZYX
+    cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
 
     # Segment over Y-axis
     transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-    transposed_img, padding = pp.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
-    xz_masks = pp.segmentation(transposed_img, model, pixel_size, mode)
-    xz_masks = pp.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0)  # XZY -> ZYX
+    transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
+    cp._default_memory_pool.free_all_blocks()
+    xz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
+    xz_masks = ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0)  # XZY -> ZYX
+    cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
 
     # Memory cleanup
