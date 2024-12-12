@@ -7,9 +7,7 @@ from cellstitch import preprocessing as pp
 from cellstitch import preprocessing_cupy as ppc
 import time
 
-stitch_method = "cellstitch"  # "iou" or "cellstitch"
 file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed3\unmixed.tif"
-out_path = os.path.split(file_path)[0]
 
 mode = "nuclei_cells"  # Segmentation mode: "nuclei" or "cells" or "nuclei_cells"
 
