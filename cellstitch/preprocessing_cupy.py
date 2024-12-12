@@ -4,7 +4,7 @@ import torch
 from cupyx.scipy.ndimage import zoom
 
 
-def crop_downscale_mask(masks: cp.array, pad: int = 0, pixel=None, z_res=None):
+def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
     if not z_res:
@@ -19,14 +19,14 @@ def crop_downscale_mask(masks: cp.array, pad: int = 0, pixel=None, z_res=None):
     zoom_factors = (1, 1/anisotropy)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    masks = [_scale(mask, zoom_factors, order) for mask in masks]
+    masks = [_scale(cp.asarray(mask), zoom_factors, order) for mask in masks]
 
-    masks = cp.stack(masks).transpose(1, 2, 0)  # kiZ --> iZk
+    masks = np.stack(masks, axis=2)  # iZk
 
     return masks
 
 
-def upscale_pad_img(images: cp.array, pixel=None, z_res=None):
+def upscale_pad_img(images, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
     if not z_res:
@@ -36,17 +36,17 @@ def upscale_pad_img(images: cp.array, pixel=None, z_res=None):
     zoom_factors = (1, 1, anisotropy)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    images = images.transpose(3, 0, 1, 2)  # Cijk --> kCij
+    images = cp.asarray(images.transpose(3, 0, 1, 2))  # Cijk --> kCij
 
     images = [_scale(plane, zoom_factors, order) for plane in images]
 
-    images = cp.stack(images).transpose(1, 2, 3, 0)  # kCij --> Cijk
+    images = np.stack(images, axis=3)  # Cijk
 
     padding_width = 0
 
     if images.shape[-2] < 512:
         padding_width = (512 - images.shape[-2]) // 2
-        images = cp.pad(
+        images = np.pad(
             images,
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
             constant_values=0
@@ -58,7 +58,7 @@ def upscale_pad_img(images: cp.array, pixel=None, z_res=None):
 def _scale(plane, zoom_factors, order):
     plane = zoom(plane, zoom_factors, order=order)
 
-    return plane
+    return plane.get()
 
 
 def histogram_correct(images, match: str = "first"):
@@ -74,11 +74,13 @@ def histogram_correct(images, match: str = "first"):
         match in avail_match_methods
     ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
 
-    images = cp.asarray(images.transpose(1, 0, 2, 3))  # ZCYX --> CZYX
+    images = cp.asarray(images)
+
+    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
 
     images = [_correct(channel, match) for channel in images]
 
-    images = np.stack(images, axis=1, dtype=dtype)  # ZCYX
+    images = cp.stack(images, axis=1, dtype=dtype)  # ZCYX
 
     return images
 
@@ -117,7 +119,7 @@ def _correct(channel, match):
 
     channel = channel.reshape(k, m, n)
 
-    return channel.get()
+    return channel
 
 
 def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nuclei_cells"):
@@ -131,9 +133,9 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nucl
     )
 
     if m == "nuclei":
-        res = cp.asarray(res[0][0], dtype='uint')
+        res = np.asarray(res[0][0], dtype='uint')
     elif m == "cells":
-        res = cp.asarray(res[0][1], dtype='uint')
+        res = np.asarray(res[0][1], dtype='uint')
     elif m == "nuclei_cells":
         res = cp.asarray(res[0], dtype='uint')
 
@@ -160,7 +162,7 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nucl
                 if colocalized:
                     nuclear_cells[res[1] == cell_id] = new_label_id
                     new_label_id += 1
-        res = nuclear_cells
+        res = nuclear_cells.get()
 
     return res
 
@@ -174,9 +176,9 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
     )
 
     if m == "nuclei":
-        res = cp.asarray(res[0][0], dtype='uint')
+        res = np.asarray(res[0][0], dtype='uint')
     elif m == "cells":
-        res = cp.asarray(res[0][1], dtype='uint')
+        res = np.asarray(res[0][1], dtype='uint')
     elif m == "nuclei_cells":
         res = cp.asarray(res[0], dtype='uint')
 
@@ -203,15 +205,15 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
                 if colocalized:
                     nuclear_cells[res[1] == cell_id] = new_label_id
                     new_label_id += 1
-        res = nuclear_cells
+        res = nuclear_cells.get()
 
     return res
 
 
 def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
-    empty_res = cp.zeros_like(d[0])
+    empty_res = np.zeros_like(d[0])
     nslices = d.shape[-1]
-    if d.shape[1] < 1024 or d.shape[2] < 1024:  # For small images
+    if d.shape[1] < 1536 or d.shape[2] < 1536:  # For small images
         for xyz in range(nslices):
             res_slice = segment_single_slice_small(
                 d[:, :, :, xyz], model, pixel, m
@@ -222,6 +224,6 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
                 d[:, :, :, xyz], model, batch, pixel, m
-            )  # Count up from the previous z-slice
+            )
             empty_res[:, :, xyz] = res_slice
     return empty_res

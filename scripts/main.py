@@ -1,6 +1,7 @@
 import torch
 import tifffile
 import os
+import cupy as cp
 from instanseg import InstanSeg
 from cellpose.utils import stitch3D
 from cellstitch.pipeline import full_stitch
@@ -26,11 +27,12 @@ z_resolution = 3.5
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
-img = ppc.histogram_correct(img).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
+img = ppc.histogram_correct(img).transpose(1, 2, 3, 0).get()  # ZCYX -> CYXZ
+cp._default_memory_pool.free_all_blocks()
 
 # Segment over Z-axis
 yx_masks = ppc.segmentation(img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
-tifffile.imwrite(os.path.join(out_path, "yx_masks.tif"), yx_masks.get())
+tifffile.imwrite(os.path.join(out_path, "yx_masks.tif"), yx_masks)
 
 if stitch_method == "iou":
 
