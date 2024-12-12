@@ -30,7 +30,7 @@ def crop_downscale_mask(masks: np.array, pad: int = 0, pixel=None, z_res=None):
 
     masks = Parallel(n_jobs=-1)(delayed(_scale)(*args) for args in args_list)
 
-    masks = np.stack(masks).transpose(1, 2, 0)  # kiZ --> iZk
+    masks = np.stack(masks, axis=2)  # iZk
 
     return masks
 
@@ -58,7 +58,7 @@ def upscale_pad_img(images: np.array, pixel=None, z_res=None):
 
     images = Parallel(n_jobs=-1)(delayed(_scale)(*args) for args in args_list)
 
-    images = np.stack(images).transpose(1, 2, 3, 0)  # kCij --> Cijk
+    images = np.stack(images, axis=3)  # Cijk
 
     padding_width = 0
 
@@ -104,9 +104,7 @@ def histogram_correct(images: np.array, match: str = "first"):
 
     images = Parallel(n_jobs=-1)(delayed(_correct)(*args) for args in args_list)
 
-    images = np.array(images, dtype=dtype)
-
-    images = images.transpose(1, 0, 2, 3)  # CZYX --> ZCYX
+    images = np.stack(images, axis=1, dtype=dtype)  # ZCYX
 
     return images
 
@@ -250,7 +248,7 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
                 d[:, :, :, xyz], model, batch, pixel, m
-            )  # Count up from the previous z-slice
+            )
             empty_res[:, :, xyz] = res_slice
     return empty_res
 
