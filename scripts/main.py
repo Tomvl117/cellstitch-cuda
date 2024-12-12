@@ -10,7 +10,7 @@ from cellstitch import preprocessing_cupy as ppc
 
 
 stitch_method = "cellstitch"  # "iou" or "cellstitch"
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed2\unmixed.tif"
+file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed3\unmixed.tif"
 out_path = os.path.split(file_path)[0]
 
 mode = "nuclei_cells"  # Segmentation mode: "nuclei" or "cells" or "nuclei_cells"
@@ -32,6 +32,8 @@ cp._default_memory_pool.free_all_blocks()
 
 # Segment over Z-axis
 yx_masks = ppc.segmentation(img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()  # Clear GPU cache
 tifffile.imwrite(os.path.join(out_path, "yx_masks.tif"), yx_masks)
 
 if stitch_method == "iou":
@@ -53,7 +55,9 @@ elif stitch_method == "cellstitch":
     transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
     cp._default_memory_pool.free_all_blocks()
     yz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
-    yz_masks = ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2)  # YZX -> ZYX
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
+    yz_masks = ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2).get()  # YZX -> ZYX
     cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
 
@@ -62,7 +66,9 @@ elif stitch_method == "cellstitch":
     transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
     cp._default_memory_pool.free_all_blocks()
     xz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
-    xz_masks = ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0)  # XZY -> ZYX
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
+    xz_masks = ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0).get()  # XZY -> ZYX
     cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
 
