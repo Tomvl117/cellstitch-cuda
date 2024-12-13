@@ -3,6 +3,7 @@ from skimage import color
 from cellstitch.frame import *
 import matplotlib.pyplot as plt
 from cellpose.metrics import _label_overlap
+import time
 
 
 class FramePair:
@@ -77,8 +78,12 @@ class FramePair:
 
         return C
 
-    def stitch(self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75):
+    def stitch(
+        self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75, verbose=False
+    ):
         """Stitch frame1 using frame 0."""
+
+        time_start = time.time()
 
         lbls0 = self.frame0.get_lbls()
         lbls1 = self.frame1.get_lbls()
@@ -104,7 +109,9 @@ class FramePair:
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
-            filtered_C = cp.where(matching_filter == 0, cp.Inf, C[:, lbl1_index])  # ignore the non-matched cells
+            filtered_C = cp.where(
+                matching_filter == 0, cp.Inf, C[:, lbl1_index]
+            )  # ignore the non-matched cells
 
             lbl0_index = cp.argmin(
                 filtered_C
@@ -125,5 +132,8 @@ class FramePair:
             else:
                 self.max_lbl += 1
                 stitched_mask1[mask1 == lbl1] = self.max_lbl  # create a new label
+
+        if verbose:
+            print("Time to stitch: ", time.time() - time_start)
 
         self.frame1 = Frame(stitched_mask1)

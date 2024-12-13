@@ -52,6 +52,8 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
 
     curr_index = prev_index + 1
 
+    time_start = time.time()
+
     while curr_index < num_frame:
         cp._default_memory_pool.free_all_blocks()
         if Frame(xy_masks[curr_index]).is_empty():
@@ -78,13 +80,24 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             fp = FramePair(
                 xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max()
             )
-            fp.stitch(yz_not_stitched, xz_not_stitched)
+            fp.stitch(yz_not_stitched, xz_not_stitched, verbose=verbose)
             xy_masks[curr_index] = fp.frame1.mask.get()
 
             prev_index = curr_index
             curr_index += 1
 
+    if verbose:
+        print("Total time to stitch: ", time.time() - time_start)
+    time_start = time.time()
+
     xy_masks = cp.asarray(fill_holes_and_remove_small_masks(xy_masks))
 
+    if verbose:
+        print("Time to fill holes and remove small masks: ", time.time() - time_start)
+    time_start = time.time()
+
     overseg_correction(xy_masks)
+
+    if verbose:
+        print("Time to correct oversegmentation: ", time.time() - time_start)
     return xy_masks.get()
