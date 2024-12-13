@@ -17,22 +17,22 @@ def relabel_layer(masks, z, lbls):
     overlap = _label_overlap(reference_layer, layer)
 
     for lbl in lbls:
-        lbl0 = np.argmax(overlap[:, lbl])
+        lbl0 = cp.argmax(overlap[:, lbl])
         layer[layer == lbl] = lbl0
 
 
 def overseg_correction(masks):
-    lbls = np.unique(masks)[1:]
+    lbls = cp.unique(masks)[1:]
 
     # get a list of labels that need to be corrected
     layers_lbls = {}
 
     for lbl in lbls:
-        existing_layers = np.sum(masks == lbl, axis=(1, 2), dtype="bool")
+        existing_layers = cp.sum(masks == lbl, axis=(1, 2), dtype="bool")
         depth = existing_layers.sum()
 
         if depth == 1:
-            z = np.where(existing_layers != 0)[0][0]
+            z = cp.where(existing_layers != 0)[0][0]
             if z in layers_lbls.keys():
                 layers_lbls[z].append(lbl)
             else:
@@ -55,6 +55,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
     curr_index = prev_index + 1
 
     while curr_index < num_frame:
+        cp._default_memory_pool.free_all_blocks()
         if Frame(xy_masks[curr_index]).is_empty():
             # if frame is empty, skip
             curr_index += 1
@@ -62,8 +63,8 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             if verbose:
                 print("===Stitching frame %s with frame %s ...===" % (curr_index, prev_index))
             
-            yz_not_stitched = np.asarray((yz_masks[prev_index] != 0) * (yz_masks[curr_index] != 0) * (yz_masks[prev_index] != yz_masks[curr_index]))
-            xz_not_stitched = np.asarray((xz_masks[prev_index] != 0) * (xz_masks[curr_index] != 0) * (xz_masks[prev_index] != xz_masks[curr_index]))
+            yz_not_stitched = cp.asarray((yz_masks[prev_index] != 0) * (yz_masks[curr_index] != 0) * (yz_masks[prev_index] != yz_masks[curr_index]))
+            xz_not_stitched = cp.asarray((xz_masks[prev_index] != 0) * (xz_masks[curr_index] != 0) * (xz_masks[prev_index] != xz_masks[curr_index]))
      
             fp = FramePair(xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max())
             fp.stitch(yz_not_stitched, xz_not_stitched)
@@ -72,7 +73,6 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             prev_index = curr_index
             curr_index += 1
 
-    np._default_memory_pool.free_all_blocks()
     xy_masks = fill_holes_and_remove_small_masks(xy_masks)
     overseg_correction(xy_masks)
     return xy_masks

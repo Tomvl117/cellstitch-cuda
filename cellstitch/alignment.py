@@ -23,11 +23,11 @@ class FramePair:
         Display frame0 and frame1 next to each other, with consistent colorings.
         """
 
-        num_lbls = len(np.union1d(self.frame0.get_lbls(), self.frame1.get_lbls()))
+        num_lbls = len(cp.union1d(self.frame0.get_lbls(), self.frame1.get_lbls()))
 
-        colors = np.random.random((num_lbls, 3))
+        colors = cp.random.random((num_lbls, 3))
 
-        frames = np.array([self.frame0.mask, self.frame1.mask])
+        frames = cp.array([self.frame0.mask, self.frame1.mask])
         rgb = color.label2rgb(frames, colors=colors, bg_label=0)
 
         fig, axes = plt.subplots(1, 2, figsize=(20, 10))
@@ -59,11 +59,11 @@ class FramePair:
         Return the cost matrix between cells in the two frame defined by IoU.
         """
 
-        sizes0 = np.sum(overlap, axis=1)
-        sizes1 = np.sum(overlap, axis=0)
+        sizes0 = cp.sum(overlap, axis=1)
+        sizes1 = cp.sum(overlap, axis=0)
 
         # Create a meshgrid for vectorized operations
-        lbl0_indices, lbl1_indices = np.meshgrid(lbls0, lbls1, indexing='ij')
+        lbl0_indices, lbl1_indices = cp.meshgrid(lbls0, lbls1, indexing='ij')
 
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
         scaling_factors = overlap_sizes / (sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes)
@@ -72,6 +72,7 @@ class FramePair:
 
         return C
 
+
     def stitch(self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75):
         """Stitch frame1 using frame 0."""
 
@@ -79,7 +80,7 @@ class FramePair:
         lbls1 = self.frame1.get_lbls()
 
         # get sizes
-        overlap = np.asarray(_label_overlap(self.frame0.mask, self.frame1.mask))
+        overlap = cp.asarray(_label_overlap(self.frame0.mask, self.frame1.mask))
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
@@ -87,26 +88,26 @@ class FramePair:
 
         # get a soft matching from plan
         n, m = plan.shape
-        soft_matching = np.zeros((n, m))
+        soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
         matched_indices = plan.argmax(axis=1)
-        soft_matching[np.arange(n), matched_indices] = 1
+        soft_matching[cp.arange(n), matched_indices] = 1
 
-        mask0, mask1 = np.asarray(self.frame0.mask), np.asarray(self.frame1.mask)
+        mask0, mask1 = cp.asarray(self.frame0.mask), cp.asarray(self.frame1.mask)
 
-        stitched_mask1 = np.zeros(mask1.shape)
+        stitched_mask1 = cp.zeros(mask1.shape)
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
             filtered_C = C[:, lbl1_index].copy()
-            filtered_C[matching_filter == 0] = np.Inf  # ignore the non-matched cells
+            filtered_C[matching_filter == 0] = cp.Inf  # ignore the non-matched cells
 
-            lbl0_index = np.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
+            lbl0_index = cp.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
 
             lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
-            n_not_stitch_pixel = yz_not_stitched[np.where(mask1 == lbl1)].sum() / 2 + xz_not_stitched[np.where(mask1 == lbl1)].sum() / 2
+            n_not_stitch_pixel = yz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2 + xz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
             stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
 
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
@@ -114,6 +115,9 @@ class FramePair:
             else:
                 self.max_lbl += 1
                 stitched_mask1[mask1 == lbl1] = self.max_lbl  # create a new label
+
+        print("Time to loop: ", time.time() - time_start)
+
         self.frame1 = Frame(stitched_mask1)
     
     def stitch_2d(self):
@@ -131,7 +135,7 @@ class FramePair:
 
         # get a soft matching from plan
         n, m = plan.shape
-        soft_matching = np.zeros((n, m))
+        soft_matching = cp.zeros((n, m))
 
         for i in range(n):
             matched_index = plan[i].argmax()
@@ -139,14 +143,14 @@ class FramePair:
 
         mask0, mask1 = self.frame0.mask, self.frame1.mask
 
-        stitched_mask1 = np.zeros(mask1.shape)
+        stitched_mask1 = cp.zeros(mask1.shape)
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
             filtered_C = C[:, lbl1_index].copy()
-            filtered_C[matching_filter == 0] = np.Inf  # ignore the non-matched cells
+            filtered_C[matching_filter == 0] = cp.Inf  # ignore the non-matched cells
 
-            lbl0_index = np.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
+            lbl0_index = cp.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
 
             lbl0, lbl1 = lbls0[lbl0_index], lbls1[lbl1_index]
 

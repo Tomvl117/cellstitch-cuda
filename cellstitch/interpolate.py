@@ -1,7 +1,7 @@
 import os
 import ot
 import ot.plot
-import cupy as np
+import cupy as cp
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from cupyx.scipy import ndimage as ndi
@@ -17,12 +17,12 @@ from cellpose import plot as cp_plot
 def comp_match_plan(pc1, pc2, dist='sqeuclidean'):
     """Compute optimal matching plans between 2 sets of point clouds"""
     # compute cost matrix
-    C = ot.dist(pc1, pc2, metric=dist).astype(np.float64)
+    C = ot.dist(pc1, pc2, metric=dist).astype(cp.float64)
     C /= C.max()
 
     # convert point clouds to uniform distributions
     n_pts1, n_pts2 = pc1.shape[0], pc2.shape[0]
-    mu1, mu2 = np.ones(n_pts1) / n_pts1, np.ones(n_pts2) / n_pts2
+    mu1, mu2 = cp.ones(n_pts1) / n_pts1, cp.ones(n_pts2) / n_pts2
 
     # compute transport plan
     plan = ot.emd(mu1, mu2, C)
@@ -36,10 +36,10 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
 
     Parameters
     ----------
-    pc1 : np.ndarray
+    pc1 : cp.ndarray
         Point cloud representing cell boundary in frame 1
 
-    pc2 : np.ndarray
+    pc2 : cp.ndarray
         Point cloud representing cell boundary in frame 2
 
     anisotropy : int
@@ -50,7 +50,7 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
     interp_pcs : list
         Smoothed boundary locations along interpolated layers
     """
-    alphas = np.linspace(0, 1, anisotropy + 1)[1:-1]
+    alphas = cp.linspace(0, 1, anisotropy + 1)[1:-1]
     plan = comp_match_plan(pc1, pc2, dist=dist)
     normalized_plan = plan / plan.sum(axis=1, keepdims=1)  # normalize so that the row sum is 1
 
@@ -58,14 +58,14 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
 
     for alpha in alphas:
         n_pts = pc1.shape[0]
-        avg_pc = np.zeros((n_pts, 2), dtype=int)
+        avg_pc = cp.zeros((n_pts, 2), dtype=int)
 
         for i in range(n_pts):
             point = pc1[i]
             target_weights = normalized_plan[i]
 
-            weighted_target = np.array([np.sum(target_weights * pc2[:, 0]),
-                                        np.sum(target_weights * pc2[:, 1])])
+            weighted_target = cp.array([cp.sum(target_weights * pc2[:, 0]),
+                                        cp.sum(target_weights * pc2[:, 1])])
 
             avg_pc[i, :] = point * (1 - alpha) + alpha * weighted_target
 
@@ -80,7 +80,7 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
 
 def get_lbls(mask):
     """Get unique labels from the predicted masks"""
-    return np.unique(mask)[1:]
+    return cp.unique(mask)[1:]
 
 
 def min_size_filter(res, thld=100):
@@ -93,7 +93,7 @@ def min_size_filter(res, thld=100):
         for lbl in lbls:
             msk = (preds[i] == lbl)
             if msk.sum() < thld:
-                coords = np.nonzero(msk)
+                coords = cp.nonzero(msk)
                 preds[i][coords] = 0
 
     res_filtered = (preds, res[1], res[2], res[3])
@@ -116,7 +116,7 @@ def get_mask_perimeter(masks, lbl, is_contour=False):
     if is_contour:
         p = (masks == lbl).sum()
     else:
-        mask_lbl = (masks == lbl).astype(np.uint8)
+        mask_lbl = (masks == lbl).astype(cp.uint8)
         p = cp_utils.masks_to_outlines(mask_lbl).sum()
 
     return p
@@ -137,9 +137,9 @@ def calc_depth(masks):
     assert masks.ndim == 3, "Mask predictions must be 3D to calculate depth"
 
     lbls = get_lbls(masks)
-    depths = np.vectorize(
+    depths = cp.vectorize(
         lambda lbl:
-        np.diff(np.nonzero(masks == lbl)[0][[0, -1]])[0]
+        cp.diff(cp.nonzero(masks == lbl)[0][[0, -1]])[0]
     )(lbls)
 
     return depths
@@ -147,13 +147,13 @@ def calc_depth(masks):
 
 def mask_to_coord(mask):
     """ Return (n, 2) coordinates from masks """
-    coord = np.asarray(np.nonzero(mask)).T
+    coord = cp.asarray(cp.nonzero(mask)).T
     return coord
 
 
 def coord_to_mask(coord, size, lbl):
     """ Convert from coordinates to original labeled masks """
-    mask = np.zeros(size)
+    mask = cp.zeros(size)
     mask[tuple(coord.T)] = lbl
     return mask
 
@@ -164,7 +164,7 @@ def contour_to_mask(contour):
     binary_contour = (contour > 0)
     binary_mask = ndi.binary_fill_holes(binary_contour)
 
-    mask = np.zeros_like(binary_contour)
+    mask = cp.zeros_like(binary_contour)
     mask[binary_mask] = lbl
 
     return mask
@@ -182,7 +182,7 @@ def connect(coord1, coord2, mask):
     coord2 : [x2, y2]
         Coordinate of the second pixel.
 
-    mask : binary np.narray
+    mask : binary cp.narray
         Binary mask of the boundary.
     """
     x1, y1 = coord1
@@ -201,8 +201,8 @@ def connect(coord1, coord2, mask):
 
     # first, add diagonal pixels
     for i in range(1, diag_length + 1):
-        added_x = x1 + i * np.sign(x_offset)
-        added_y = y1 + i * np.sign(y_offset)
+        added_x = x1 + i * cp.sign(x_offset)
+        added_y = y1 + i * cp.sign(y_offset)
 
         mask[added_x, added_y] = 1
 
@@ -210,23 +210,23 @@ def connect(coord1, coord2, mask):
     if added_x == x2 and added_y != y2:
         offset = abs(added_y - y2)
         for i in range(1, offset + 1):
-            mask[added_x, added_y + i * np.sign(y_offset)] = 1
+            mask[added_x, added_y + i * cp.sign(y_offset)] = 1
 
             # or, now need to walk horizonally
     if added_y == y2 and added_x != x2:
         offset = abs(added_x - x2)
         for i in range(1, offset + 1):
-            mask[added_x + i * np.sign(x_offset), added_y] = 1
+            mask[added_x + i * cp.sign(x_offset), added_y] = 1
 
 
 def calc_angles(sc_pt, tg_pts, eps=1e-20):
     """
     Calculate angle (rad) between source point (sc_pt) & list of target points(tg_pts, dim=(n, 2))
     """
-    sc_pts = np.tile(sc_pt, (tg_pts.shape[0], 1))
+    sc_pts = cp.tile(sc_pt, (tg_pts.shape[0], 1))
     diff = tg_pts - sc_pts
-    angles = np.apply_along_axis(
-        lambda x: np.arctan2(x[1], x[0]+eps),
+    angles = cp.apply_along_axis(
+        lambda x: cp.arctan2(x[1], x[0]+eps),
         axis=1,
         arr=diff
     )
@@ -256,7 +256,7 @@ def connect_boundary(coords, size, lbl=1):
 
     """
     # Sort boundary labels by angle to mask's mass center
-    mass_center = np.round(coords.mean(0)).astype(np.int64)
+    mass_center = cp.round(coords.mean(0)).astype(cp.int64)
     angles = calc_angles(mass_center, coords)
     sorted_coords = coords[angles.argsort()]
 
@@ -283,11 +283,11 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
     def _dilation(coords, lims):
         y, x = coords
         ymax, xmax = lims
-        dy, dx = np.meshgrid(np.arange(y-2, y+3), np.arange(x-2, x+3), indexing='ij')
+        dy, dx = cp.meshgrid(cp.arange(y-2, y+3), cp.arange(x-2, x+3), indexing='ij')
         dy, dx = dy.flatten(), dx.flatten()
-        mask = np.logical_and(
-            np.logical_and(dy >= 0, dx >= 0),
-            np.logical_and(dy < ymax, dx < xmax)
+        mask = cp.logical_and(
+            cp.logical_and(dy >= 0, dx >= 0),
+            cp.logical_and(dy < ymax, dx < xmax)
         )
         return dy[mask], dx[mask]
 
@@ -297,14 +297,14 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
 
     # Boundary condition: if empty on source / target label
     # align the empty slice w/ mass centers to represent instance endings
-    sc_dummy = np.zeros_like(sc_mask)
-    tg_dummy = np.zeros_like(tg_mask)
-    if not np.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour)).size:
-        if (sc_contour.sum() == tg_contour.sum() == 0) or (np.logical_and(sc_mask, tg_mask).sum() > 0):
-            return np.zeros(shape)
+    sc_dummy = cp.zeros_like(sc_mask)
+    tg_dummy = cp.zeros_like(tg_mask)
+    if not cp.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour)).size:
+        if (sc_contour.sum() == tg_contour.sum() == 0) or (cp.logical_and(sc_mask, tg_mask).sum() > 0):
+            return cp.zeros(shape)
         get_mask_center = lambda x: (
-            np.round(np.nonzero(x)[0].sum() / x.sum()).astype(np.uint16),
-            np.round(np.nonzero(x)[1].sum() / x.sum()).astype(np.uint16)
+            cp.round(cp.nonzero(x)[0].sum() / x.sum()).astype(cp.uint16),
+            cp.round(cp.nonzero(x)[1].sum() / x.sum()).astype(cp.uint16)
         )
         for lbl in get_lbls(sc_contour):
             yc, xc = _dilation(get_mask_center(sc_mask == lbl), sc_mask.shape)
@@ -315,12 +315,12 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
         sc_contour += sc_dummy
         tg_contour += tg_dummy
 
-    joint_lbls = np.intersect1d(
+    joint_lbls = cp.intersect1d(
         get_lbls(sc_contour),
         get_lbls(tg_contour)
     )
 
-    interp_masks = np.zeros((
+    interp_masks = cp.zeros((
         anisotropy+1,      # num. interpolated layers
         len(joint_lbls),   # num. individual masks
         shape[0],          # x
@@ -328,8 +328,8 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
     ))
 
     for i, lbl in enumerate(joint_lbls):
-        sc_ct = (sc_contour== lbl).astype(np.uint8)
-        tg_ct = (tg_contour == lbl).astype(np.uint8)
+        sc_ct = (sc_contour== lbl).astype(cp.uint8)
+        tg_ct = (tg_contour == lbl).astype(cp.uint8)
 
         sc_coord = mask_to_coord(sc_ct)
         tg_coord = mask_to_coord(tg_ct)
@@ -355,7 +355,7 @@ def full_interpolate(masks, anisotropy=2, dist='sqeuclidean', verbose=False):
 
     Parameters
     ----------
-    masks : np.ndarray
+    masks : cp.ndarray
         layers of 2D predictions
         (dim: (Depth, H, W))
 
@@ -364,12 +364,12 @@ def full_interpolate(masks, anisotropy=2, dist='sqeuclidean', verbose=False):
 
     Returns
     -------|
-    interp_masks : np.ndarray
+    interp_masks : cp.ndarray
         interpolated masks
         (dim: (Depth * anisotropy - (anisotropy-1), H, W))
 
     """
-    interp_masks = np.zeros((
+    interp_masks = cp.zeros((
         len(masks) + (len(masks)-1)*(anisotropy-1),
         masks.shape[1],
         masks.shape[2]

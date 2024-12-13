@@ -1,5 +1,4 @@
 import gc
-import cupy as np
 
 from cellpose import metrics as cp_metrics
 from cellpose import utils as cp_utils
@@ -18,7 +17,7 @@ from .alignment import *
 #--------------------
 
 def get_num_cells(masks):
-    return len(np.unique(masks)[1:])
+    return len(cp.unique(masks)[1:])
 
 
 def get_avg_vol(masks):
@@ -33,8 +32,8 @@ def sample_indices(masks, n=50):
     for mask in masks:
         n = min(get_num_cells(mask), n)
         assert n > 0, "Empty masks"
-        indices.append(np.random.choice(np.unique(mask)[1:], n))
-    return np.array(indices)
+        indices.append(cp.random.choice(cp.unique(mask)[1:], n))
+    return cp.array(indices)
     
 
 def match_lbls(source_mask, target_mask, sc_lbl):
@@ -42,8 +41,8 @@ def match_lbls(source_mask, target_mask, sc_lbl):
     Find matched label between source mask & target mask with largest IoU area
     Return the best-matched target label
     """
-    coords = np.nonzero(source_mask == sc_lbl)
-    cand_lbls, counts = np.unique(target_mask[coords], return_counts=True)  # Candidate labels
+    coords = cp.nonzero(source_mask == sc_lbl)
+    cand_lbls, counts = cp.unique(target_mask[coords], return_counts=True)  # Candidate labels
 
     if len(cand_lbls) == 0 or (len(cand_lbls) == 1 and cand_lbls[0] == 0):
         tg_lbl = -1
@@ -69,22 +68,22 @@ def _compute_convex_hull(image):
     This version is slightly (~40%) faster for 3D volumes,
     by being a little more stingy with RAM.
     """    
-    assert (np.array(image.shape) <= np.iinfo(np.int16).max).all(), \
+    assert (cp.array(image.shape) <= cp.iinfo(cp.int16).max).all(), \
         f"This function assumes your image is smaller than {2**15} in each dimension"
     
-    points = np.argwhere(image).astype(np.int16)
+    points = cp.argwhere(image).astype(cp.int16)
     hull = ConvexHull(points)
     deln = Delaunay(points[hull.vertices])
 
     # Instead of allocating a giant array for all indices in the volume,
     # just iterate over the slices one at a time.
-    idx_2d = np.indices(image.shape[1:], np.int16)
-    idx_2d = np.moveaxis(idx_2d, 0, -1)
+    idx_2d = cp.indices(image.shape[1:], cp.int16)
+    idx_2d = cp.moveaxis(idx_2d, 0, -1)
 
-    idx_3d = np.zeros((*image.shape[1:], image.ndim), np.int16)
+    idx_3d = cp.zeros((*image.shape[1:], image.ndim), cp.int16)
     idx_3d[:, :, 1:] = idx_2d
     
-    mask = np.zeros_like(image, dtype=bool)
+    mask = cp.zeros_like(image, dtype=bool)
     for z in range(len(image)):
         idx_3d[:,:,0] = z
         s = deln.find_simplex(idx_3d)
@@ -105,8 +104,8 @@ def _subsample_mask(sc_mask, tg_mask):
     d, h, w = sc_mask.shape
 
     # Convert to integer if input is binary
-    union = np.logical_or(sc_mask, tg_mask).astype(np.uint8)
-    coords = np.argwhere(union).astype(np.uint16)
+    union = cp.logical_or(sc_mask, tg_mask).astype(cp.uint8)
+    coords = cp.argwhere(union).astype(cp.uint16)
 
     dl, hl, wl = coords.min(0)
     dr, hr, wr = coords.max(0)
@@ -124,7 +123,7 @@ def _subsample_mask(sc_mask, tg_mask):
 
 def average_precision(masks_true, masks_pred, threshold):
     iou = cp_metrics._intersection_over_union(masks_true, masks_pred)
-    lbls_true, lbls_pred = np.unique(masks_true)[1:, ].tolist(), np.unique(masks_pred)[1:, ].tolist()
+    lbls_true, lbls_pred = cp.unique(masks_true)[1:, ].tolist(), cp.unique(masks_pred)[1:, ].tolist()
 
     tp = 0
     for lbl_true in lbls_true:
@@ -160,14 +159,14 @@ def avg_symmetric_surf_dist(mask, pred, mask_lbls, pred_lbls):
         pred_outline = cp_utils.masks_to_outlines(pred)
 
         # Calculate ASSD for each outline pixel
-        m1 = np.ones_like(mask, dtype=np.uint8)
+        m1 = cp.ones_like(mask, dtype=cp.uint8)
         m1[pred_outline] = 0
-        m2 = np.ones_like(pred, dtype=np.uint8)
+        m2 = cp.ones_like(pred, dtype=cp.uint8)
         m2[mask_outline] = 0
 
-        dist1 = ndi.distance_transform_edt(m1)[np.nonzero(mask_outline)]
-        dist2 = ndi.distance_transform_edt(m2)[np.nonzero(pred_outline)]
-        assd = np.concatenate([dist1, dist2]).mean()
+        dist1 = ndi.distance_transform_edt(m1)[cp.nonzero(mask_outline)]
+        dist2 = ndi.distance_transform_edt(m2)[cp.nonzero(pred_outline)]
+        assd = cp.concatenate([dist1, dist2]).mean()
 
         del m1, m2, mask_outline, pred_outline
         gc.collect()
@@ -180,7 +179,7 @@ def avg_symmetric_surf_dist(mask, pred, mask_lbls, pred_lbls):
             mask_bin, pred_bin = _subsample_mask(mask == sc_lbl, pred == tg_lbl)
             assd.append(_calc_assd(mask_bin, pred_bin))
 
-    return np.mean(assd) if len(assd) > 0 else 0
+    return cp.mean(assd) if len(assd) > 0 else 0
 
     
 def compactness_convexity_ae(mask, pred, mask_lbls, pred_lbls, eps=1e-10):
@@ -190,8 +189,8 @@ def compactness_convexity_ae(mask, pred, mask_lbls, pred_lbls, eps=1e-10):
      - (2). Convexity
      (Randomly sample 100 instances: presampled as `mask_lbls` & `pred_lbls`)
     """    
-    comp_abs_errors = np.zeros(len(mask_lbls)) # compactness errors
-    conv_abs_errors = np.zeros(len(mask_lbls)) # convexity errors
+    comp_abs_errors = cp.zeros(len(mask_lbls)) # compactness errors
+    conv_abs_errors = cp.zeros(len(mask_lbls)) # convexity errors
     
     for i, (mask_lbl, pred_lbl) in enumerate(zip(mask_lbls, pred_lbls)):
         if pred_lbl == -1:
@@ -203,9 +202,9 @@ def compactness_convexity_ae(mask, pred, mask_lbls, pred_lbls, eps=1e-10):
             # Compactness 
             vm, am = mask_bin.sum(), _calc_surface_area(mask_bin)
             vp, ap = pred_bin.sum(), _calc_surface_area(pred_bin)
-            cm = 36*np.pi * vm**2 / (am**3+eps)
-            cp = 36*np.pi * vp**2 / (ap**3+eps)
-            comp_abs_errors[i] = np.abs(cp-cm) / cm
+            cm = 36*cp.pi * vm**2 / (am**3+eps)
+            cp = 36*cp.pi * vp**2 / (ap**3+eps)
+            comp_abs_errors[i] = cp.abs(cp-cm) / cm
         
             # Convexity
             mask_bin_ch = _compute_convex_hull(mask_bin)
@@ -215,7 +214,7 @@ def compactness_convexity_ae(mask, pred, mask_lbls, pred_lbls, eps=1e-10):
             ap_ch = _calc_surface_area(pred_bin_ch)
             cm = am_ch / (am+eps)
             cp = ap_ch / (ap+eps)
-            conv_abs_errors[i] = np.abs(cp-cm) / cm
+            conv_abs_errors[i] = cp.abs(cp-cm) / cm
 
             del mask_bin_ch, pred_bin_ch
             gc.collect()

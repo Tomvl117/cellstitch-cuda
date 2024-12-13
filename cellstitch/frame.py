@@ -1,4 +1,4 @@
-import cupy as np
+import cupy as cp
 
 
 class Frame:
@@ -7,14 +7,14 @@ class Frame:
         self.mask = mask
 
     def get_lbls(self):
-        return np.unique(self.mask)
+        return cp.unique(self.mask)
 
     def get_sizes(self):
         """
         Calculate sizes of each mask from frame.
         """
         sizes = [self.get_size(lbl) for lbl in self.get_lbls()]
-        return np.asarray(sizes)
+        return cp.asarray(sizes)
 
     def is_empty(self):
         """
@@ -26,7 +26,7 @@ class Frame:
         """
         get the size of the given lbl from the frame.
         """
-        return np.sum((self.mask == int(lbl)))
+        return cp.sum((self.mask == int(lbl)))
 
     def get_locations(self):
         """
@@ -36,6 +36,6 @@ class Frame:
         locations = []
         # compute the average
         for lbl in lbls:
-            coords = np.asarray((self.mask == lbl)).T  # mask to coord
-            locations.append(np.average(coords, axis=0))
-        return np.array(locations)
+            coords = cp.asarray((self.mask == lbl)).T  # mask to coord
+            locations.append(cp.average(coords, axis=0))
+        return cp.array(locations)
