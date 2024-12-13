@@ -27,7 +27,7 @@ z_resolution = 3.5
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
-img = ppc.histogram_correct(img).transpose(1, 2, 3, 0).get()  # ZCYX -> CYXZ
+img = ppc.histogram_correct(img).get().transpose(1, 2, 3, 0) # ZCYX -> CYXZ
 cp._default_memory_pool.free_all_blocks()
 
 # Segment over Z-axis
