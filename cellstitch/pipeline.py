@@ -84,7 +84,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             prev_index = curr_index
             curr_index += 1
 
-    xy_masks = fill_holes_and_remove_small_masks(xy_masks)
-    overseg_correction(cp.asarray(xy_masks))
+    xy_masks = cp.asarray(fill_holes_and_remove_small_masks(xy_masks))
 
-    return xy_masks
+    overseg_correction(xy_masks)
+    return xy_masks.get()
