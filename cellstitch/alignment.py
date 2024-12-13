@@ -93,7 +93,7 @@ class FramePair:
         matched_indices = plan.argmax(axis=1)
         soft_matching[np.arange(n), matched_indices] = 1
 
-        mask0, mask1 = self.frame0.mask, self.frame1.mask
+        mask0, mask1 = np.asarray(self.frame0.mask), np.asarray(self.frame1.mask)
 
         stitched_mask1 = np.zeros(mask1.shape)
         for lbl1_index in range(1, m):
@@ -106,8 +106,8 @@ class FramePair:
 
             lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
-            n_not_stitch_pixel = yz_not_stitched[np.where(np.asarray(self.frame1.mask) == lbl1)].sum() / 2 + xz_not_stitched[np.where(np.asarray(self.frame1.mask) == lbl1)].sum() / 2
-            stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * (self.frame1.mask == lbl1).sum()
+            n_not_stitch_pixel = yz_not_stitched[np.where(mask1 == lbl1)].sum() / 2 + xz_not_stitched[np.where(mask1 == lbl1)].sum() / 2
+            stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
 
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
                 stitched_mask1[mask1 == lbl1] = lbl0
