@@ -40,13 +40,17 @@ class FramePair:
         """
         Compute the transport plan between the two frames, given the cost matrix between the cells.
         """
-        # get cell sizes
-        sizes0 = self.frame0.get_sizes()
-        sizes1 = self.frame1.get_sizes()
+        mask0 = cp.asarray(self.frame0.mask)
+        mask1 = cp.asarray(self.frame1.mask)
+
+        unique_labels0, counts0 = cp.unique(mask0, return_counts=True)
+        unique_labels1, counts1 = cp.unique(mask1, return_counts=True)
+        sizes0 = cp.asarray(counts0)
+        sizes1 = cp.asarray(counts1)
 
         # convert to distribution to compute transport plan
-        dist0 = sizes0 / sum(sizes0)
-        dist1 = sizes1 / sum(sizes1)
+        dist0 = sizes0 / cp.sum(sizes0)
+        dist1 = sizes1 / cp.sum(sizes1)
 
         # compute transportation plan
         plan = ot.emd(dist0, dist1, C)
