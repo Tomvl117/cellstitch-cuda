@@ -10,11 +10,12 @@ from cellpose import utils as cp_utils
 from cellpose import plot as cp_plot
 
 
-#-------------------------------
+# -------------------------------
 # interpolation helper functions
-#-------------------------------
+# -------------------------------
 
-def comp_match_plan(pc1, pc2, dist='sqeuclidean'):
+
+def comp_match_plan(pc1, pc2, dist="sqeuclidean"):
     """Compute optimal matching plans between 2 sets of point clouds"""
     # compute cost matrix
     C = ot.dist(pc1, pc2, metric=dist).astype(cp.float64)
@@ -30,7 +31,7 @@ def comp_match_plan(pc1, pc2, dist='sqeuclidean'):
     return plan
 
 
-def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
+def interpolate(pc1, pc2, dist="sqeuclidean", anisotropy=2):
     """
     Calculate interpolated predictions
 
@@ -52,7 +53,9 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
     """
     alphas = cp.linspace(0, 1, anisotropy + 1)[1:-1]
     plan = comp_match_plan(pc1, pc2, dist=dist)
-    normalized_plan = plan / plan.sum(axis=1, keepdims=1)  # normalize so that the row sum is 1
+    normalized_plan = plan / plan.sum(
+        axis=1, keepdims=1
+    )  # normalize so that the row sum is 1
 
     interp_pcs = []
 
@@ -64,8 +67,9 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
             point = pc1[i]
             target_weights = normalized_plan[i]
 
-            weighted_target = cp.array([cp.sum(target_weights * pc2[:, 0]),
-                                        cp.sum(target_weights * pc2[:, 1])])
+            weighted_target = cp.array(
+                [cp.sum(target_weights * pc2[:, 0]), cp.sum(target_weights * pc2[:, 1])]
+            )
 
             avg_pc[i, :] = point * (1 - alpha) + alpha * weighted_target
 
@@ -74,9 +78,10 @@ def interpolate(pc1, pc2, dist='sqeuclidean', anisotropy=2):
     return interp_pcs
 
 
-#-----------------------------------------
+# -----------------------------------------
 # Util functions for interp reconstruction
-#-----------------------------------------
+# -----------------------------------------
+
 
 def get_lbls(mask):
     """Get unique labels from the predicted masks"""
@@ -91,7 +96,7 @@ def min_size_filter(res, thld=100):
     for i in range(len(preds)):
         lbls = get_lbls(preds[i])
         for lbl in lbls:
-            msk = (preds[i] == lbl)
+            msk = preds[i] == lbl
             if msk.sum() < thld:
                 coords = cp.nonzero(msk)
                 preds[i][coords] = 0
@@ -110,8 +115,9 @@ def get_contours(masks):
 
 
 def get_mask_perimeter(masks, lbl, is_contour=False):
-    assert lbl in get_lbls(masks), \
-        "Label {} doesn't in current mask predictions".format(lbl)
+    assert lbl in get_lbls(
+        masks
+    ), "Label {} doesn't in current mask predictions".format(lbl)
 
     if is_contour:
         p = (masks == lbl).sum()
@@ -120,6 +126,7 @@ def get_mask_perimeter(masks, lbl, is_contour=False):
         p = cp_utils.masks_to_outlines(mask_lbl).sum()
 
     return p
+
 
 def calc_vols(pred):
     """
@@ -137,22 +144,21 @@ def calc_depth(masks):
     assert masks.ndim == 3, "Mask predictions must be 3D to calculate depth"
 
     lbls = get_lbls(masks)
-    depths = cp.vectorize(
-        lambda lbl:
-        cp.diff(cp.nonzero(masks == lbl)[0][[0, -1]])[0]
-    )(lbls)
+    depths = cp.vectorize(lambda lbl: cp.diff(cp.nonzero(masks == lbl)[0][[0, -1]])[0])(
+        lbls
+    )
 
     return depths
 
 
 def mask_to_coord(mask):
-    """ Return (n, 2) coordinates from masks """
+    """Return (n, 2) coordinates from masks"""
     coord = cp.asarray(cp.nonzero(mask)).T
     return coord
 
 
 def coord_to_mask(coord, size, lbl):
-    """ Convert from coordinates to original labeled masks """
+    """Convert from coordinates to original labeled masks"""
     mask = cp.zeros(size)
     mask[tuple(coord.T)] = lbl
     return mask
@@ -161,7 +167,7 @@ def coord_to_mask(coord, size, lbl):
 def contour_to_mask(contour):
     lbl = get_lbls(contour)[0]
     """ Convert contour to solid masks with fill-in labels"""
-    binary_contour = (contour > 0)
+    binary_contour = contour > 0
     binary_mask = ndi.binary_fill_holes(binary_contour)
 
     mask = cp.zeros_like(binary_contour)
@@ -191,7 +197,7 @@ def connect(coord1, coord2, mask):
     x_offset, y_offset = x2 - x1, y2 - y1
 
     # skip if the two coordinates are already connected
-    if x_offset ** 2 + y_offset ** 2 <= 2:
+    if x_offset**2 + y_offset**2 <= 2:
         return
 
     diag_length = min(abs(x_offset), abs(y_offset))
@@ -226,9 +232,7 @@ def calc_angles(sc_pt, tg_pts, eps=1e-20):
     sc_pts = cp.tile(sc_pt, (tg_pts.shape[0], 1))
     diff = tg_pts - sc_pts
     angles = cp.apply_along_axis(
-        lambda x: cp.arctan2(x[1], x[0]+eps),
-        axis=1,
-        arr=diff
+        lambda x: cp.arctan2(x[1], x[0] + eps), axis=1, arr=diff
     )
 
     return angles
@@ -263,7 +267,7 @@ def connect_boundary(coords, size, lbl=1):
     mask = coord_to_mask(coords, size, lbl)
 
     for i, (x, y) in enumerate(sorted_coords[:-1]):
-        next_x, next_y = sorted_coords[i+1]
+        next_x, next_y = sorted_coords[i + 1]
         connect((x, y), (next_x, next_y), mask)
 
     connect(tuple(sorted_coords[-1]), tuple(sorted_coords[0]), mask)
@@ -271,11 +275,12 @@ def connect_boundary(coords, size, lbl=1):
     return mask
 
 
-#-----------------------------
+# -----------------------------
 # Core Interpolation functions
-#-----------------------------
+# -----------------------------
 
-def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
+
+def interp_layers(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
     """
     Interpolating adjacent z-layers
     """
@@ -283,11 +288,12 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
     def _dilation(coords, lims):
         y, x = coords
         ymax, xmax = lims
-        dy, dx = cp.meshgrid(cp.arange(y-2, y+3), cp.arange(x-2, x+3), indexing='ij')
+        dy, dx = cp.meshgrid(
+            cp.arange(y - 2, y + 3), cp.arange(x - 2, x + 3), indexing="ij"
+        )
         dy, dx = dy.flatten(), dx.flatten()
         mask = cp.logical_and(
-            cp.logical_and(dy >= 0, dx >= 0),
-            cp.logical_and(dy < ymax, dx < xmax)
+            cp.logical_and(dy >= 0, dx >= 0), cp.logical_and(dy < ymax, dx < xmax)
         )
         return dy[mask], dx[mask]
 
@@ -300,11 +306,13 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
     sc_dummy = cp.zeros_like(sc_mask)
     tg_dummy = cp.zeros_like(tg_mask)
     if not cp.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour)).size:
-        if (sc_contour.sum() == tg_contour.sum() == 0) or (cp.logical_and(sc_mask, tg_mask).sum() > 0):
+        if (sc_contour.sum() == tg_contour.sum() == 0) or (
+            cp.logical_and(sc_mask, tg_mask).sum() > 0
+        ):
             return cp.zeros(shape)
         get_mask_center = lambda x: (
             cp.round(cp.nonzero(x)[0].sum() / x.sum()).astype(cp.uint16),
-            cp.round(cp.nonzero(x)[1].sum() / x.sum()).astype(cp.uint16)
+            cp.round(cp.nonzero(x)[1].sum() / x.sum()).astype(cp.uint16),
         )
         for lbl in get_lbls(sc_contour):
             yc, xc = _dilation(get_mask_center(sc_mask == lbl), sc_mask.shape)
@@ -315,32 +323,33 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
         sc_contour += sc_dummy
         tg_contour += tg_dummy
 
-    joint_lbls = cp.intersect1d(
-        get_lbls(sc_contour),
-        get_lbls(tg_contour)
+    joint_lbls = cp.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour))
+
+    interp_masks = cp.zeros(
+        (
+            anisotropy + 1,  # num. interpolated layers
+            len(joint_lbls),  # num. individual masks
+            shape[0],  # x
+            shape[1],  # y
+        )
     )
 
-    interp_masks = cp.zeros((
-        anisotropy+1,      # num. interpolated layers
-        len(joint_lbls),   # num. individual masks
-        shape[0],          # x
-        shape[1]           # y
-    ))
-
     for i, lbl in enumerate(joint_lbls):
-        sc_ct = (sc_contour== lbl).astype(cp.uint8)
+        sc_ct = (sc_contour == lbl).astype(cp.uint8)
         tg_ct = (tg_contour == lbl).astype(cp.uint8)
 
         sc_coord = mask_to_coord(sc_ct)
         tg_coord = mask_to_coord(tg_ct)
 
-        interp_coords = interpolate(sc_coord, tg_coord, dist=dist, anisotropy=anisotropy)
+        interp_coords = interpolate(
+            sc_coord, tg_coord, dist=dist, anisotropy=anisotropy
+        )
         interps = [
             ndi.binary_fill_holes(connect_boundary(interp, shape)) * lbl
             for interp in interp_coords
         ]
 
-        interp_masks[1:-1, i,...] = interps
+        interp_masks[1:-1, i, ...] = interps
 
     interp_masks = interp_masks.max(1)
     interp_masks[0] = sc_mask
@@ -349,7 +358,7 @@ def interp_layers(sc_mask, tg_mask, dist='sqeuclidean', anisotropy=2):
     return interp_masks
 
 
-def full_interpolate(masks, anisotropy=2, dist='sqeuclidean', verbose=False):
+def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
     """
     Interpolating between all adjacent z-layers
 
@@ -369,19 +378,21 @@ def full_interpolate(masks, anisotropy=2, dist='sqeuclidean', verbose=False):
         (dim: (Depth * anisotropy - (anisotropy-1), H, W))
 
     """
-    interp_masks = cp.zeros((
-        len(masks) + (len(masks)-1)*(anisotropy-1),
-        masks.shape[1],
-        masks.shape[2]
-    ))
+    interp_masks = cp.zeros(
+        (
+            len(masks) + (len(masks) - 1) * (anisotropy - 1),
+            masks.shape[1],
+            masks.shape[2],
+        )
+    )
 
     idx = 0
     for i, sc_mask in enumerate(masks[:-1]):
         if verbose and i % 20 == 0:
-            print('Interpolating layer {} & {}...'.format(i, i+1))
-        tg_mask = masks[i+1]
+            print("Interpolating layer {} & {}...".format(i, i + 1))
+        tg_mask = masks[i + 1]
         interps = interp_layers(sc_mask, tg_mask, dist=dist, anisotropy=anisotropy)
-        interp_masks[idx:idx+anisotropy+1] = interps
+        interp_masks[idx : idx + anisotropy + 1] = interps
         idx += anisotropy
 
     return interp_masks

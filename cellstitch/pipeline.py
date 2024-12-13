@@ -41,6 +41,7 @@ def overseg_correction(masks):
     for z, lbls in layers_lbls.items():
         relabel_layer(masks, z, lbls)
 
+
 def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
     """
     Stitch masks in-place (top -> bottom).
@@ -61,12 +62,25 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             curr_index += 1
         else:
             if verbose:
-                print("===Stitching frame %s with frame %s ...===" % (curr_index, prev_index))
-            
-            yz_not_stitched = cp.asarray((yz_masks[prev_index] != 0) * (yz_masks[curr_index] != 0) * (yz_masks[prev_index] != yz_masks[curr_index]))
-            xz_not_stitched = cp.asarray((xz_masks[prev_index] != 0) * (xz_masks[curr_index] != 0) * (xz_masks[prev_index] != xz_masks[curr_index]))
-     
-            fp = FramePair(xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max())
+                print(
+                    "===Stitching frame %s with frame %s ...==="
+                    % (curr_index, prev_index)
+                )
+
+            yz_not_stitched = cp.asarray(
+                (yz_masks[prev_index] != 0)
+                * (yz_masks[curr_index] != 0)
+                * (yz_masks[prev_index] != yz_masks[curr_index])
+            )
+            xz_not_stitched = cp.asarray(
+                (xz_masks[prev_index] != 0)
+                * (xz_masks[curr_index] != 0)
+                * (xz_masks[prev_index] != xz_masks[curr_index])
+            )
+
+            fp = FramePair(
+                xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max()
+            )
             fp.stitch(yz_not_stitched, xz_not_stitched)
             xy_masks[curr_index] = fp.frame1.mask.get()
 

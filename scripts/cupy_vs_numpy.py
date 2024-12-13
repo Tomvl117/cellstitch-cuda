@@ -32,28 +32,42 @@ img = ppc.histogram_correct(img_raw).transpose(1, 2, 3, 0).get()  # ZCYX -> CYXZ
 cp._default_memory_pool.free_all_blocks()
 
 # Segment over Z-axis
-yx_masks = ppc.segmentation(img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
+yx_masks = ppc.segmentation(img, model, pixel_size, mode).transpose(
+    2, 0, 1
+)  # YXZ -> ZYX
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
 
 # Segment over X-axis
 transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
+transposed_img, padding = ppc.upscale_pad_img(
+    transposed_img, pixel_size, z_resolution
+)  # Preprocess YZ planes
 cp._default_memory_pool.free_all_blocks()
 yz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
-yz_masks = ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2).get()  # YZX -> ZYX
+yz_masks = (
+    ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution)
+    .transpose(1, 0, 2)
+    .get()
+)  # YZX -> ZYX
 cp._default_memory_pool.free_all_blocks()
 
 # Segment over Y-axis
 transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-transposed_img, padding = ppc.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
+transposed_img, padding = ppc.upscale_pad_img(
+    transposed_img, pixel_size, z_resolution
+)  # Preprocess XZ planes
 cp._default_memory_pool.free_all_blocks()
 xz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
-xz_masks = ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0).get()  # XZY -> ZYX
+xz_masks = (
+    ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution)
+    .transpose(1, 2, 0)
+    .get()
+)  # XZY -> ZYX
 cp._default_memory_pool.free_all_blocks()
 
 # Memory cleanup
@@ -61,7 +75,7 @@ del model, img, transposed_img
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
 
-print("CuPy preprocessing time:", time.time()-time_start)
+print("CuPy preprocessing time:", time.time() - time_start)
 
 # NumPy
 
@@ -72,25 +86,39 @@ time_start = time.time()
 img = pp.histogram_correct(img_raw).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
 
 # Segment over Z-axis
-yx_masks = pp.segmentation(img, model, pixel_size, mode).transpose(2, 0, 1)  # YXZ -> ZYX
+yx_masks = pp.segmentation(img, model, pixel_size, mode).transpose(
+    2, 0, 1
+)  # YXZ -> ZYX
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
 
 # Segment over X-axis
 transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-transposed_img, padding = pp.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess YZ planes
+transposed_img, padding = pp.upscale_pad_img(
+    transposed_img, pixel_size, z_resolution
+)  # Preprocess YZ planes
 yz_masks = pp.segmentation(transposed_img, model, pixel_size, mode)
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
-yz_masks = pp.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution).transpose(1, 0, 2)  # YZX -> ZYX
+yz_masks = pp.crop_downscale_mask(
+    yz_masks, padding, pixel_size, z_resolution
+).transpose(
+    1, 0, 2
+)  # YZX -> ZYX
 
 # Segment over Y-axis
 transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-transposed_img, padding = pp.upscale_pad_img(transposed_img, pixel_size, z_resolution)  # Preprocess XZ planes
+transposed_img, padding = pp.upscale_pad_img(
+    transposed_img, pixel_size, z_resolution
+)  # Preprocess XZ planes
 xz_masks = pp.segmentation(transposed_img, model, pixel_size, mode)
 if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
-xz_masks = pp.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution).transpose(1, 2, 0)  # XZY -> ZYX
+xz_masks = pp.crop_downscale_mask(
+    xz_masks, padding, pixel_size, z_resolution
+).transpose(
+    1, 2, 0
+)  # XZY -> ZYX
 
 # Memory cleanup
 del model, img, transposed_img
@@ -98,4 +126,4 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()  # Clear GPU cache
 
 
-print("NumPy preprocessing time:", time.time()-time_start)
+print("NumPy preprocessing time:", time.time() - time_start)

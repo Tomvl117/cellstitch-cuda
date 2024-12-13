@@ -12,8 +12,7 @@ class FramePair:
 
         # store the max labels for stitching
         max_lbl_default = max(
-            self.frame0.get_lbls().max(),
-            self.frame1.get_lbls().max()
+            self.frame0.get_lbls().max(), self.frame1.get_lbls().max()
         )
 
         self.max_lbl = max(max_lbl, max_lbl_default)
@@ -63,15 +62,16 @@ class FramePair:
         sizes1 = cp.sum(overlap, axis=0)
 
         # Create a meshgrid for vectorized operations
-        lbl0_indices, lbl1_indices = cp.meshgrid(lbls0, lbls1, indexing='ij')
+        lbl0_indices, lbl1_indices = cp.meshgrid(lbls0, lbls1, indexing="ij")
 
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
-        scaling_factors = overlap_sizes / (sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes)
+        scaling_factors = overlap_sizes / (
+            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes
+        )
 
         C = 1 - scaling_factors
 
         return C
-
 
     def stitch(self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75):
         """Stitch frame1 using frame 0."""
@@ -103,12 +103,19 @@ class FramePair:
             filtered_C = C[:, lbl1_index].copy()
             filtered_C[matching_filter == 0] = cp.Inf  # ignore the non-matched cells
 
-            lbl0_index = cp.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
+            lbl0_index = cp.argmin(
+                filtered_C
+            )  # this is the cell0 we will attempt to relabel cell1 with
 
             lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
-            n_not_stitch_pixel = yz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2 + xz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
-            stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
+            n_not_stitch_pixel = (
+                yz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
+                + xz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
+            )
+            stitch_cell = (
+                n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
+            )
 
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
                 stitched_mask1[mask1 == lbl1] = lbl0
@@ -119,7 +126,7 @@ class FramePair:
         print("Time to loop: ", time.time() - time_start)
 
         self.frame1 = Frame(stitched_mask1)
-    
+
     def stitch_2d(self):
         """Stitch frame1 using frame 0."""
 
@@ -150,7 +157,9 @@ class FramePair:
             filtered_C = C[:, lbl1_index].copy()
             filtered_C[matching_filter == 0] = cp.Inf  # ignore the non-matched cells
 
-            lbl0_index = cp.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
+            lbl0_index = cp.argmin(
+                filtered_C
+            )  # this is the cell0 we will attempt to relabel cell1 with
 
             lbl0, lbl1 = lbls0[lbl0_index], lbls1[lbl1_index]
 

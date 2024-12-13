@@ -17,7 +17,7 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1/anisotropy)
+    zoom_factors = (1, 1 / anisotropy)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     masks = [_scale(mask, zoom_factors, order) for mask in masks]
@@ -53,7 +53,7 @@ def upscale_pad_img(images, pixel=None, z_res=None):
         images = np.pad(
             images.get(),
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
-            constant_values=0
+            constant_values=0,
         )
 
     return images, padding_width
@@ -126,7 +126,9 @@ def _correct(channel, match):
     return channel
 
 
-def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nuclei_cells"):
+def segment_single_slice_medium(
+    d, model, batch_size, pixel=None, m: str = "nuclei_cells"
+):
     res, image_tensor = model.eval_medium_image(
         d,
         pixel,
@@ -137,11 +139,11 @@ def segment_single_slice_medium(d, model, batch_size, pixel=None, m: str = "nucl
     )
 
     if m == "nuclei":
-        res = np.asarray(res[0][0], dtype='uint')
+        res = np.asarray(res[0][0], dtype="uint")
     elif m == "cells":
-        res = np.asarray(res[0][1], dtype='uint')
+        res = np.asarray(res[0][1], dtype="uint")
     elif m == "nuclei_cells":
-        res = cp.asarray(res[0], dtype='uint')
+        res = cp.asarray(res[0], dtype="uint")
 
         # Initialize new label ID
         new_label_id = 0
@@ -180,11 +182,11 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
     )
 
     if m == "nuclei":
-        res = np.asarray(res[0][0], dtype='uint')
+        res = np.asarray(res[0][0], dtype="uint")
     elif m == "cells":
-        res = np.asarray(res[0][1], dtype='uint')
+        res = np.asarray(res[0][1], dtype="uint")
     elif m == "nuclei_cells":
-        res = cp.asarray(res[0], dtype='uint')
+        res = cp.asarray(res[0], dtype="uint")
 
         # Initialize new label ID
         new_label_id = 0
@@ -219,12 +221,10 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
     nslices = d.shape[-1]
     if d.shape[1] < 1536 or d.shape[2] < 1536:  # For small images
         for xyz in range(nslices):
-            res_slice = segment_single_slice_small(
-                d[:, :, :, xyz], model, pixel, m
-            )
+            res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel, m)
             empty_res[:, :, xyz] = res_slice
     else:  # For large images
-        batch = (torch.cuda.mem_get_info()[0] // 1024 ** 3 // 4)
+        batch = torch.cuda.mem_get_info()[0] // 1024**3 // 4
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
                 d[:, :, :, xyz], model, batch, pixel, m
