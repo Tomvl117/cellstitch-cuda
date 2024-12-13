@@ -123,8 +123,6 @@ class FramePair:
                 self.max_lbl += 1
                 stitched_mask1[mask1 == lbl1] = self.max_lbl  # create a new label
 
-        print("Time to loop: ", time.time() - time_start)
-
         self.frame1 = Frame(stitched_mask1)
 
     def stitch_2d(self):
