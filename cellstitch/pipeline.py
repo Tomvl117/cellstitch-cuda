@@ -67,11 +67,12 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
      
             fp = FramePair(xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max())
             fp.stitch(yz_not_stitched, xz_not_stitched)
-            xy_masks[curr_index] = fp.frame1.mask
+            xy_masks[curr_index] = fp.frame1.mask.get()
 
             prev_index = curr_index
             curr_index += 1
 
+    np._default_memory_pool.free_all_blocks()
     xy_masks = fill_holes_and_remove_small_masks(xy_masks)
     overseg_correction(xy_masks)
     return xy_masks
