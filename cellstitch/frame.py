@@ -13,8 +13,8 @@ class Frame:
         """
         Calculate sizes of each mask from frame.
         """
-        sizes = [(self.mask == lbl).sum() for lbl in self.get_lbls()]
-        return np.array(sizes)
+        sizes = [self.get_size(lbl) for lbl in self.get_lbls()]
+        return np.asarray(sizes)
 
     def is_empty(self):
         """
@@ -26,7 +26,7 @@ class Frame:
         """
         get the size of the given lbl from the frame.
         """
-        return (self.mask == lbl).sum()
+        return np.sum((self.mask == int(lbl)))
 
     def get_locations(self):
         """

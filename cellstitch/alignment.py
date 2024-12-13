@@ -55,28 +55,17 @@ class FramePair:
 
         return plan
 
-    def get_cost_matrix(self, overlap):
+    def get_cost_matrix(self, overlap, lbls0, lbls1):
         """
         Return the cost matrix between cells in the two frame defined by IoU.
         """
-        lbls0 = self.frame0.get_lbls()
-        lbls1 = self.frame1.get_lbls()
-
-        num_cells0 = len(lbls0)
-        num_cells1 = len(lbls1)
-
-        C = np.zeros((num_cells0, num_cells1))
 
         sizes0 = np.sum(overlap, axis=1)
         sizes1 = np.sum(overlap, axis=0)
 
-        # for each pairs of cells, we want to compute the overlap proportion (intersect / min(size0, size1))
-        for lbl0_index in range(num_cells0):
-            for lbl1_index in range(num_cells1):
-                lbl0, lbl1 = lbls0[lbl0_index], lbls1[lbl1_index]
-                overlap_size = overlap[lbl0, lbl1]
-                scaling_factor = overlap_size / (sizes0[lbl0] + sizes1[lbl1] - overlap_size)
-                C[lbl0_index, lbl1_index] = 1 - scaling_factor
+        overlap_size = overlap[np.ix_(lbls0, lbls1)]
+        scaling_factor = overlap_size / (sizes0[:, None] + sizes1 - overlap_size)
+        C = 1 - scaling_factor
 
         return C
 
@@ -87,10 +76,10 @@ class FramePair:
         lbls1 = self.frame1.get_lbls()
 
         # get sizes
-        overlap = _label_overlap(self.frame0.mask, self.frame1.mask)
+        overlap = np.asarray(_label_overlap(self.frame0.mask, self.frame1.mask))
 
         # compute matching
-        C = self.get_cost_matrix(overlap)
+        C = self.get_cost_matrix(overlap, lbls0, lbls1)
         plan = self.get_plan(C)
 
         # get a soft matching from plan
