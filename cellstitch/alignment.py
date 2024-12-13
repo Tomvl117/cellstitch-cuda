@@ -1,5 +1,4 @@
 import ot
-import cupy as np
 from skimage import color
 from cellstitch.frame import *
 import matplotlib.pyplot as plt
@@ -101,11 +100,11 @@ class FramePair:
 
             lbl0_index = np.argmin(filtered_C)  # this is the cell0 we will attempt to relabel cell1 with
 
-            lbl0, lbl1 = lbls0[lbl0_index], lbls1[lbl1_index]
+            lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
-            n_not_stith_pixel = yz_not_stitched[np.where(self.frame1.mask == lbl1)].sum() / 2 + xz_not_stitched[np.where(self.frame1.mask == lbl1)].sum() / 2
-            stitch_cell = n_not_stith_pixel <= (1 - p_stitching_votes) * (self.frame1.mask == lbl1).sum()
-        
+            n_not_stitch_pixel = yz_not_stitched[np.where(np.asarray(self.frame1.mask) == lbl1)].sum() / 2 + xz_not_stitched[np.where(np.asarray(self.frame1.mask) == lbl1)].sum() / 2
+            stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * (self.frame1.mask == lbl1).sum()
+
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
                 stitched_mask1[mask1 == lbl1] = lbl0
             else:
@@ -123,7 +122,7 @@ class FramePair:
         overlap = _label_overlap(self.frame0.mask, self.frame1.mask)
 
         # compute matching
-        C = self.get_cost_matrix(overlap)
+        C = self.get_cost_matrix(overlap, lbls0, lbls1)
         plan = self.get_plan(C)
 
         # get a soft matching from plan

@@ -4,7 +4,7 @@ import ot.plot
 import cupy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from scipy import ndimage as ndi
+from cupyx.scipy import ndimage as ndi
 
 from cellpose import utils as cp_utils
 from cellpose import plot as cp_plot

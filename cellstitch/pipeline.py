@@ -62,8 +62,8 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
             if verbose:
                 print("===Stitching frame %s with frame %s ...===" % (curr_index, prev_index))
             
-            yz_not_stitched = (yz_masks[prev_index] != 0) * (yz_masks[curr_index] != 0) * (yz_masks[prev_index] != yz_masks[curr_index])
-            xz_not_stitched = (xz_masks[prev_index] != 0) * (xz_masks[curr_index] != 0) * (xz_masks[prev_index] != xz_masks[curr_index])
+            yz_not_stitched = np.asarray((yz_masks[prev_index] != 0) * (yz_masks[curr_index] != 0) * (yz_masks[prev_index] != yz_masks[curr_index]))
+            xz_not_stitched = np.asarray((xz_masks[prev_index] != 0) * (xz_masks[curr_index] != 0) * (xz_masks[prev_index] != xz_masks[curr_index]))
      
             fp = FramePair(xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max())
             fp.stitch(yz_not_stitched, xz_not_stitched)

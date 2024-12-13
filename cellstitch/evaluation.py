@@ -3,7 +3,7 @@ import cupy as np
 
 from cellpose import metrics as cp_metrics
 from cellpose import utils as cp_utils
-from scipy import ndimage as ndi
+from cupyx.scipy import ndimage as ndi
 from scipy.spatial import ConvexHull, Delaunay
 from scipy.spatial.qhull import QhullError
 
