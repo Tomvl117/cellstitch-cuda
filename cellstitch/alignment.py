@@ -62,9 +62,13 @@ class FramePair:
         sizes0 = np.sum(overlap, axis=1)
         sizes1 = np.sum(overlap, axis=0)
 
-        overlap_size = overlap[np.ix_(lbls0, lbls1)]
-        scaling_factor = overlap_size / (sizes0[:, None] + sizes1 - overlap_size)
-        C = 1 - scaling_factor
+        # Create a meshgrid for vectorized operations
+        lbl0_indices, lbl1_indices = np.meshgrid(lbls0, lbls1, indexing='ij')
+
+        overlap_sizes = overlap[lbl0_indices, lbl1_indices]
+        scaling_factors = overlap_sizes / (sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes)
+
+        C = 1 - scaling_factors
 
         return C
 
