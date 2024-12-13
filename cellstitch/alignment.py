@@ -86,9 +86,9 @@ class FramePair:
         n, m = plan.shape
         soft_matching = np.zeros((n, m))
 
-        for i in range(n):
-            matched_index = plan[i].argmax()
-            soft_matching[i, matched_index] = 1
+        # Vectorized computation
+        matched_indices = plan.argmax(axis=1)
+        soft_matching[np.arange(n), matched_indices] = 1
 
         mask0, mask1 = self.frame0.mask, self.frame1.mask
 
