@@ -14,7 +14,7 @@ def relabel_layer(masks, z, lbls):
     else:
         reference_layer = masks[z + 1]
 
-    overlap = _label_overlap(reference_layer, layer)
+    overlap = cp.asarray(_label_overlap(reference_layer.get(), layer.get()))
 
     for lbl in lbls:
         lbl0 = cp.argmax(overlap[:, lbl])
@@ -28,15 +28,12 @@ def overseg_correction(masks):
     layers_lbls = {}
 
     for lbl in lbls:
-        existing_layers = cp.sum(masks == lbl, axis=(1, 2), dtype="bool")
-        depth = existing_layers.sum()
+        existing_layers = cp.any(masks == lbl, axis=(1, 2))
+        depth = cp.sum(existing_layers)
 
         if depth == 1:
-            z = cp.where(existing_layers != 0)[0][0]
-            if z in layers_lbls.keys():
-                layers_lbls[z].append(lbl)
-            else:
-                layers_lbls[z] = [lbl]
+            z = int(cp.where(existing_layers)[0][0])
+            layers_lbls.setdefault(z, []).append(lbl)
 
     for z, lbls in layers_lbls.items():
         relabel_layer(masks, z, lbls)
@@ -89,4 +86,5 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
 
     xy_masks = fill_holes_and_remove_small_masks(xy_masks)
     overseg_correction(cp.asarray(xy_masks))
-    return xy_masks.get()
+
+    return xy_masks
