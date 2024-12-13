@@ -104,8 +104,7 @@ class FramePair:
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
-            filtered_C = C[:, lbl1_index].copy()
-            filtered_C[matching_filter == 0] = cp.Inf  # ignore the non-matched cells
+            filtered_C = cp.where(matching_filter == 0, cp.Inf, C[:, lbl1_index])  # ignore the non-matched cells
 
             lbl0_index = cp.argmin(
                 filtered_C
@@ -114,8 +113,8 @@ class FramePair:
             lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
             n_not_stitch_pixel = (
-                yz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
-                + xz_not_stitched[cp.where(mask1 == lbl1)].sum() / 2
+                yz_not_stitched[mask1 == lbl1].sum() / 2
+                + xz_not_stitched[mask1 == lbl1].sum() / 2
             )
             stitch_cell = (
                 n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
