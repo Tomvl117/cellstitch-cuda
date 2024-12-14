@@ -109,9 +109,17 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
     return xy_masks.get()
 
 
-def cellstitch_cuda(img, output_masks: bool = False, output_path=None, stitch_method: str = "cellstitch_cuda",
-                    seg_mode: str = "nuclei_cells", pixel_size=None, z_step=None, bleach_correct: bool = True,
-                    verbose: bool = False):
+def cellstitch_cuda(
+    img,
+    output_masks: bool = False,
+    output_path=None,
+    stitch_method: str = "cellstitch_cuda",
+    seg_mode: str = "nuclei_cells",
+    pixel_size=None,
+    z_step=None,
+    bleach_correct: bool = True,
+    verbose: bool = False,
+):
     """
     Full stitching pipeline, which does the following:
         1. Histogram-based signal degradation correction
@@ -164,17 +172,25 @@ def cellstitch_cuda(img, output_masks: bool = False, output_path=None, stitch_me
 
     # Set pixelsizes
     if pixel_size is None:
-        if 'Info' in metadata:
-            info = metadata['Info'].split()
-            pixel_size = 1 / float([s for s in info if "XResolution" in s][0].split('=')[-1])  # Oh my gosh
+        if "Info" in metadata:
+            info = metadata["Info"].split()
+            pixel_size = 1 / float(
+                [s for s in info if "XResolution" in s][0].split("=")[-1]
+            )  # Oh my gosh
         else:
-            print("Could not find the pixel_size in the metadata. The output might not be fully reliable.")
+            print(
+                "Could not find the pixel_size in the metadata. The output might not be fully reliable."
+            )
     if z_step is None:
-        if 'Info' in metadata:
-            info = metadata['Info'].split()
-            z_step = float([s for s in info if "spacing" in s][0].split('=')[-1])  # At least it's pretty fast
+        if "Info" in metadata:
+            info = metadata["Info"].split()
+            z_step = float(
+                [s for s in info if "spacing" in s][0].split("=")[-1]
+            )  # At least it's pretty fast
         else:
-            print("Could not find the z_step in the metadata. The output might not be fully reliable.")
+            print(
+                "Could not find the z_step in the metadata. The output might not be fully reliable."
+            )
 
     # Set up output path
     if output_masks:
@@ -276,9 +292,13 @@ def cellstitch_cuda(img, output_masks: bool = False, output_path=None, stitch_me
         cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks, verbose=verbose)
 
         if output_masks:
-            tifffile.imwrite(os.path.join(output_path, "cellstitch_masks.tif"), cellstitch_masks)
+            tifffile.imwrite(
+                os.path.join(output_path, "cellstitch_masks.tif"), cellstitch_masks
+            )
 
         return cellstitch_masks
 
     else:
-        print("Incompatible stitching method. Supported options are \'iou\' and \'cellstitch_cuda\'.")
+        print(
+            "Incompatible stitching method. Supported options are 'iou' and 'cellstitch_cuda'."
+        )
