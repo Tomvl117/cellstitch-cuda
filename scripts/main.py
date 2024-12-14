@@ -21,6 +21,12 @@ z_step = None  # microns per pixel
 bleach_correct = True
 verbose = True
 
+# Check cuda
+if cp.cuda.is_available():
+    print("CUDA is available. Using device", cp.cuda.get_device_id())
+else:
+    print("CUDA is not available; using CPU.")
+
 # Read image file
 if os.path.isfile(img):
     with tifffile.TiffFile(img) as tif:
