@@ -1,7 +1,7 @@
 import tifffile
 import os
 from cellpose.utils import stitch3D
-from cellstitch.pipeline import full_stitch
+from cellstitch_cuda.pipeline import full_stitch
 
 
 stitch_method = "cellstitch"  # "iou" or "cellstitch"
