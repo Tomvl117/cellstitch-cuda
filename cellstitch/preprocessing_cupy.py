@@ -115,6 +115,29 @@ def _correct(channel, match):
     return channel
 
 
+def _filter_nuclei_cells(res):
+    # Initialize new label ID
+    new_label_id = 0
+
+    nuclear_cells = cp.zeros_like(res[1])
+
+    unique_labels = cp.unique(res[0])
+    for label_id in unique_labels[unique_labels != 0]:
+        # Find the coordinates of the current label in the nuclei layer
+        coords = cp.argwhere(res[0] == label_id)
+
+        # Check if any of these coordinates are also labeled in the cell layer
+        cell_ids = res[1][coords[:, 0], coords[:, 1]]
+        colocalized_cells = cell_ids[cell_ids != 0]
+
+        if colocalized_cells.size > 0:
+            cell_id = colocalized_cells[0]
+            nuclear_cells[res[1] == cell_id] = new_label_id
+            new_label_id += 1
+
+    return nuclear_cells.get()
+
+
 def segment_single_slice_medium(
     d, model, batch_size, pixel=None, m: str = "nuclei_cells"
 ):
@@ -132,28 +155,7 @@ def segment_single_slice_medium(
     elif m == "cells":
         res = np.asarray(res[0][1], dtype="uint")
     elif m == "nuclei_cells":
-        res = cp.asarray(res[0], dtype="uint")
-
-        # Initialize new label ID
-        new_label_id = 0
-
-        nuclear_cells = cp.zeros_like(res[1])
-
-        unique_labels = cp.unique(res[0])
-        for label_id in unique_labels[unique_labels != 0]:
-            # Find the coordinates of the current label in the nuclei layer
-            coords = cp.argwhere(res[0] == label_id)
-
-            # Check if any of these coordinates are also labeled in the cell layer
-            cell_ids = res[1][coords[:, 0], coords[:, 1]]
-            colocalized_cells = cell_ids[cell_ids != 0]
-
-            if colocalized_cells.size > 0:
-                cell_id = colocalized_cells[0]
-                nuclear_cells[res[1] == cell_id] = new_label_id
-                new_label_id += 1
-
-        res = nuclear_cells.get()
+        res = _filter_nuclei_cells(cp.asarray(res[0], dtype="uint"))
 
     return res
 
@@ -171,28 +173,7 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
     elif m == "cells":
         res = np.asarray(res[0][1], dtype="uint")
     elif m == "nuclei_cells":
-        res = cp.asarray(res[0], dtype="uint")
-
-        # Initialize new label ID
-        new_label_id = 0
-
-        nuclear_cells = cp.zeros_like(res[1])
-
-        unique_labels = cp.unique(res[0])
-        for label_id in unique_labels[unique_labels != 0]:
-            # Find the coordinates of the current label in the nuclei layer
-            coords = cp.argwhere(res[0] == label_id)
-
-            # Check if any of these coordinates are also labeled in the cell layer
-            cell_ids = res[1][coords[:, 0], coords[:, 1]]
-            colocalized_cells = cell_ids[cell_ids != 0]
-
-            if colocalized_cells.size > 0:
-                cell_id = colocalized_cells[0]
-                nuclear_cells[res[1] == cell_id] = new_label_id
-                new_label_id += 1
-
-        res = nuclear_cells.get()
+        res = _filter_nuclei_cells(cp.asarray(res[0], dtype="uint"))
 
     return res
 
