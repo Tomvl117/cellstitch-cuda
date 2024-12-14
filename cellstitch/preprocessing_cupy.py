@@ -10,19 +10,17 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     if not z_res:
         z_res = 1
 
-    masks = masks.transpose(2, 0, 1)  # iZk --> kiZ
-
     if pad != 0:
-        masks = masks[:, :, pad:-pad]
+        masks = masks[:, pad:-pad, :]  # iZk
     masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1 / anisotropy)
+    zoom_factors = (1, 1 / anisotropy, 1)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    masks = [_scale(mask, zoom_factors, order) for mask in masks]
+    masks = zoom(masks, zoom_factors, order)
 
-    masks = cp.stack(masks, axis=2)  # iZk
+    masks = masks.get()
     cp._default_memory_pool.free_all_blocks()
 
     return masks
@@ -35,15 +33,14 @@ def upscale_pad_img(images, pixel=None, z_res=None):
         z_res = 1
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1, anisotropy)
+    zoom_factors = (1, 1, anisotropy, 1)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    images = cp.asarray(images)
-    images = images.transpose(3, 0, 1, 2)  # Cijk --> kCij
+    images = cp.asarray(images)  # Cijk
 
-    images = [_scale(plane, zoom_factors, order) for plane in images]
+    images = zoom(images, zoom_factors, order=order)
 
-    images = cp.stack(images, axis=3)  # Cijk
+    images = images.get()
     cp._default_memory_pool.free_all_blocks()
 
     padding_width = 0
@@ -51,18 +48,12 @@ def upscale_pad_img(images, pixel=None, z_res=None):
     if images.shape[-2] < 512:
         padding_width = (512 - images.shape[-2]) // 2
         images = np.pad(
-            images.get(),
+            images,
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
             constant_values=0,
         )
 
     return images, padding_width
-
-
-def _scale(plane, zoom_factors, order):
-    plane = zoom(plane, zoom_factors, order=order)
-
-    return plane
 
 
 def histogram_correct(images, match: str = "first"):
@@ -78,13 +69,11 @@ def histogram_correct(images, match: str = "first"):
         match in avail_match_methods
     ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
 
-    images = cp.asarray(images)
-
-    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
+    images = cp.asarray(images.transpose(1, 0, 2, 3))  # ZCYX --> CZYX
 
     images = [_correct(channel, match) for channel in images]
 
-    images = cp.stack(images, axis=1, dtype=dtype)  # ZCYX
+    images = cp.stack(images, axis=1, dtype=dtype).get()  # ZCYX
 
     return images
 

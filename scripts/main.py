@@ -27,7 +27,7 @@ z_resolution = 3.5
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
-img = ppc.histogram_correct(img).get().transpose(1, 2, 3, 0) # ZCYX -> CYXZ
+img = ppc.histogram_correct(img).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
 cp._default_memory_pool.free_all_blocks()
 
 # Segment over Z-axis
@@ -61,10 +61,10 @@ elif stitch_method == "cellstitch":
     yz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    yz_masks = (
-        ppc.crop_downscale_mask(yz_masks, padding, pixel_size, z_resolution)
-        .transpose(1, 0, 2)
-        .get()
+    yz_masks = ppc.crop_downscale_mask(
+        yz_masks, padding, pixel_size, z_resolution
+    ).transpose(
+        1, 0, 2
     )  # YZX -> ZYX
     cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "yz_masks.tif"), yz_masks)
@@ -78,10 +78,10 @@ elif stitch_method == "cellstitch":
     xz_masks = ppc.segmentation(transposed_img, model, pixel_size, mode)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    xz_masks = (
-        ppc.crop_downscale_mask(xz_masks, padding, pixel_size, z_resolution)
-        .transpose(1, 2, 0)
-        .get()
+    xz_masks = ppc.crop_downscale_mask(
+        xz_masks, padding, pixel_size, z_resolution
+    ).transpose(
+        1, 2, 0
     )  # XZY -> ZYX
     cp._default_memory_pool.free_all_blocks()
     tifffile.imwrite(os.path.join(out_path, "xz_masks.tif"), xz_masks)
