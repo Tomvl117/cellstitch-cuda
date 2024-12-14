@@ -5,25 +5,30 @@ import cupy as cp
 from instanseg import InstanSeg
 from cellpose.utils import stitch3D
 from cellstitch.pipeline import full_stitch
-from cellstitch import preprocessing as pp
 from cellstitch import preprocessing_cupy as ppc
 
 
+# Set params
 stitch_method = "cellstitch"  # "iou" or "cellstitch"
-file_path = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed3\unmixed.tif"
-out_path = os.path.split(file_path)[0]
+mode = (
+    "nuclei_cells"  # Instanseg segmentation mode: "nuclei" or "cells" or "nuclei_cells"
+)
+file = r"E:\1_DATA\Rheenen\tvl_jr\3d stitching\unmixed2\unmixed.tif"  # Or img: numpy.ndarray
+out_path = None
+x_resolution = 2.2
+pixel_size = 1 / x_resolution
+z_resolution = 3.5
 
-mode = "nuclei_cells"  # Segmentation mode: "nuclei" or "cells" or "nuclei_cells"
+# Set up output path
+if out_path is None:
+    out_path = os.path.split(file)[0]
 
 # Read image file
-with tifffile.TiffFile(file_path) as tif:
+with tifffile.TiffFile(file) as tif:
     img = tif.asarray()  # ZCYX
     metadata = tif.imagej_metadata or {}
 
 # Instanseg-based pipeline
-x_resolution = 2.2
-pixel_size = 1 / x_resolution
-z_resolution = 3.5
 
 model = InstanSeg("fluorescence_nuclei_and_cells")
 
@@ -93,7 +98,7 @@ elif stitch_method == "cellstitch":
 
     print("Running CellStitch stitching...")
 
-    cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks)
+    cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks, verbose=True)
 
     tifffile.imwrite(os.path.join(out_path, "cellstitch_masks.tif"), cellstitch_masks)
 

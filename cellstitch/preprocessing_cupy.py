@@ -18,7 +18,7 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     zoom_factors = (1, 1 / anisotropy, 1)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    masks = zoom(masks, zoom_factors, order)
+    masks = zoom(masks, zoom_factors, order=order)
 
     masks = masks.get()
     cp._default_memory_pool.free_all_blocks()
