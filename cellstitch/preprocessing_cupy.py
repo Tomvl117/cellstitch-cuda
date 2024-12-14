@@ -139,24 +139,20 @@ def segment_single_slice_medium(
 
         nuclear_cells = cp.zeros_like(res[1])
 
-        for label_id in cp.unique(res[0]):
-            if label_id != 0:
-                # Find the coordinates of the current label in the nuclei layer
-                coords = cp.argwhere(res[0] == label_id)
+        unique_labels = cp.unique(res[0])
+        for label_id in unique_labels[unique_labels != 0]:
+            # Find the coordinates of the current label in the nuclei layer
+            coords = cp.argwhere(res[0] == label_id)
 
-                # Check if any of these coordinates are also labeled in the cell layer
-                colocalized = False
-                for coord in coords:
-                    if res[1][coord[0], coord[1]] != 0:
-                        # If the nuclear label is colocalized with a cell label, save the cell label
-                        cell_id = res[1][coord[0], coord[1]]
-                        colocalized = True
-                        break
+            # Check if any of these coordinates are also labeled in the cell layer
+            cell_ids = res[1][coords[:, 0], coords[:, 1]]
+            colocalized_cells = cell_ids[cell_ids != 0]
 
-                # If colocalized, assign a new label ID
-                if colocalized:
-                    nuclear_cells[res[1] == cell_id] = new_label_id
-                    new_label_id += 1
+            if colocalized_cells.size > 0:
+                cell_id = colocalized_cells[0]
+                nuclear_cells[res[1] == cell_id] = new_label_id
+                new_label_id += 1
+
         res = nuclear_cells.get()
 
     return res
@@ -182,24 +178,20 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
 
         nuclear_cells = cp.zeros_like(res[1])
 
-        for label_id in cp.unique(res[0]):
-            if label_id != 0:
-                # Find the coordinates of the current label in the nuclei layer
-                coords = cp.argwhere(res[0] == label_id)
+        unique_labels = cp.unique(res[0])
+        for label_id in unique_labels[unique_labels != 0]:
+            # Find the coordinates of the current label in the nuclei layer
+            coords = cp.argwhere(res[0] == label_id)
 
-                # Check if any of these coordinates are also labeled in the cell layer
-                colocalized = False
-                for coord in coords:
-                    if res[1][coord[0], coord[1]] != 0:
-                        # If the nuclear label is colocalized with a cell label, save the cell label
-                        cell_id = res[1][coord[0], coord[1]]
-                        colocalized = True
-                        break
+            # Check if any of these coordinates are also labeled in the cell layer
+            cell_ids = res[1][coords[:, 0], coords[:, 1]]
+            colocalized_cells = cell_ids[cell_ids != 0]
 
-                # If colocalized, assign a new label ID
-                if colocalized:
-                    nuclear_cells[res[1] == cell_id] = new_label_id
-                    new_label_id += 1
+            if colocalized_cells.size > 0:
+                cell_id = colocalized_cells[0]
+                nuclear_cells[res[1] == cell_id] = new_label_id
+                new_label_id += 1
+
         res = nuclear_cells.get()
 
     return res
