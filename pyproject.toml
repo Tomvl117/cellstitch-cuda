@@ -13,17 +13,17 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["Barcoding", "Polytope", "Fluorescent images"]
+keywords = ["3D labeling", "Cell labels", "Instanseg"]
 dependencies = ["instanseg-torch>=0.0.6", "cellpose>=3.1.0", "POT>=0.8.1", "sphinx", "sphinxcontrib-apidoc", "tifffile", "cupy"]
-requires-python = ">=3.9"
+requires-python = ">=3.9, <3.12"
 
 [tool.setuptools]
 py-modules = []
-package-dir = {""="src"}
+package-dir = {""="cellstitch_cuda"}
 
 [tool.mypy]
 python_version = '3.9'
-mypy_path = ['src']
+mypy_path = ['cellstitch_cuda']
 packages = "cellstitch-instanseg"
 strict = true
 
