@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cellstitch-instanseg"
 version = "1.0.0"
-description = "CellStitch 3D labeling using Instanseg segmentation"
+description = "CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation."
 readme = "README.md"
-authors = [{name = "Tom van Leeuwen", email = "t.vanleeuwen@nki.nl"}]
+authors = [{name = "Tom van Leeuwen", email = "tom@tleeuwen.nl"}]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python",
