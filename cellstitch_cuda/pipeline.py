@@ -197,11 +197,11 @@ def cellstitch_cuda(
             pixel_size = 1 / float(
                 [s for s in info if "XResolution" in s][0].split("=")[-1]
             )  # Oh my gosh
-        except Warning:
+        except:
             print(
                 "No XResolution found in image metadata. The output might not be fully reliable."
             )
-    else:
+    elif pixel_size is None:
         print(
             "No pixel_size provided. The output might not be fully reliable. If unexpected, check the image metadata."
         )
@@ -211,9 +211,9 @@ def cellstitch_cuda(
             z_step = float(
                 [s for s in info if "spacing" in s][0].split("=")[-1]
             )  # At least it's pretty fast
-        except Warning:
+        except:
             print("No spacing (Z step) found in image metadata. The output might not be fully reliable.")
-    else:
+    elif z_step is None:
         print(
             "No z_step provided. The output might not be fully reliable. If unexpected, check the image metadata."
         )
