@@ -30,13 +30,14 @@ def relabel_layer(masks, z, lbls):
 
 
 def overseg_correction(masks):
-    lbls = cp.unique(masks)[1:]
+    masks_cp = cp.asarray(masks)
+    lbls = cp.unique(masks_cp)[1:]
 
     # get a list of labels that need to be corrected
     layers_lbls = {}
 
     for lbl in lbls:
-        existing_layers = cp.any(masks == lbl, axis=(1, 2))
+        existing_layers = cp.any(masks_cp == lbl, axis=(1, 2))
         depth = cp.sum(existing_layers)
 
         if depth == 1:
@@ -44,10 +45,16 @@ def overseg_correction(masks):
             layers_lbls.setdefault(z, []).append(lbl)
 
     for z, lbls in layers_lbls.items():
-        relabel_layer(masks, z, lbls)
+        relabel_layer(masks_cp, z, lbls)
+        cp._default_memory_pool.free_all_blocks()
+
+    masks = masks_cp.get()
+    cp._default_memory_pool.free_all_blocks()
+
+    return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose=False):
     """
     Stitch masks in-place (top -> bottom).
     """
@@ -96,20 +103,21 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
 
     if verbose:
         print("Total time to stitch: ", time.time() - time_start)
-    time_start = time.time()
 
-    xy_masks = fill_holes_and_remove_small_masks(xy_masks)
+    if filter:
+        time_start = time.time()
+        xy_masks = fill_holes_and_remove_small_masks(xy_masks)
+        if verbose:
+            print("Time to fill holes and remove small masks: ", time.time() - time_start)
+
+    time_start = time.time()
     cp._default_memory_pool.free_all_blocks()
 
-    if verbose:
-        print("Time to fill holes and remove small masks: ", time.time() - time_start)
-    time_start = time.time()
-
-    overseg_correction(xy_masks)
+    xy_masks = overseg_correction(xy_masks)
 
     if verbose:
         print("Time to correct oversegmentation: ", time.time() - time_start)
-    return xy_masks.get()
+    return xy_masks
 
 
 def cellstitch_cuda(
@@ -121,6 +129,7 @@ def cellstitch_cuda(
     pixel_size=None,
     z_step=None,
     bleach_correct: bool = True,
+    filtering: bool = False,
     verbose: bool = False,
 ):
     """ All-in-one function to segment and stitch 2D labels
@@ -148,6 +157,10 @@ def cellstitch_cuda(
         z_step: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
             Default None
         bleach_correct: Whether histogram-based signal degradation correction should be applied to img.
+            Default True
+        filtering: Whether the fill_holes_and_remove_small_masks function should be executed. With larger datasets, this
+            has the tendency to massively slow down the postprocessing. InstanSeg also pre-filters by default, so it
+            remains off by default.
             Default False
         verbose: Verbosity.
             Default False
@@ -302,7 +315,7 @@ def cellstitch_cuda(
         if verbose:
             print("Running CellStitch stitching...")
 
-        cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks, verbose=verbose)
+        cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose)
 
         if output_masks:
             tifffile.imwrite(

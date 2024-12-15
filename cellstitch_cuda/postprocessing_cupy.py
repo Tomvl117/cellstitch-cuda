@@ -48,4 +48,9 @@ def fill_holes_and_remove_small_masks(masks, min_size=15):
                     msk = binary_fill_holes(msk)
                 masks[slc][msk] = (j + 1)
                 j += 1
-    return masks.get()
+            cp._default_memory_pool.free_all_blocks()
+
+    masks = masks.get()
+    cp._default_memory_pool.free_all_blocks()
+
+    return masks
