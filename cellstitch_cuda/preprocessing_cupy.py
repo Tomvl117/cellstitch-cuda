@@ -83,11 +83,15 @@ def histogram_correct(images, match: str = "first"):
         match in avail_match_methods
     ), f"'match' expected to be one of {avail_match_methods}, instead got {match}"
 
-    images = cp.asarray(images.transpose(1, 0, 2, 3))  # ZCYX --> CZYX
+    images = images.transpose(1, 0, 2, 3)  # ZCYX --> CZYX
 
-    images = [_correct(channel, match) for channel in images]
+    corrected = []
+    for ch in images:
+        ch = _correct(cp.asarray(ch), match).get()
+        cp._default_memory_pool.free_all_blocks()
+        corrected.append(ch)
 
-    images = cp.stack(images, axis=1, dtype=dtype).get()  # ZCYX
+    images = np.stack(corrected, axis=1, dtype=dtype)  # ZCYX
 
     return images
 
