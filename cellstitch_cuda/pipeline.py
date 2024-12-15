@@ -98,7 +98,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
         print("Total time to stitch: ", time.time() - time_start)
     time_start = time.time()
 
-    xy_masks = fill_holes_and_remove_small_masks(cp.asarray(xy_masks))
+    xy_masks = fill_holes_and_remove_small_masks(xy_masks)
     cp._default_memory_pool.free_all_blocks()
 
     if verbose:
@@ -149,7 +149,7 @@ def cellstitch_cuda(
             Default None
         bleach_correct: Whether histogram-based signal degradation correction should be applied to img.
             Default False
-        verbose: Verbosity
+        verbose: Verbosity.
             Default False
     """
 
