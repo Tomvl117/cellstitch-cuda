@@ -200,7 +200,10 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
             res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel, m)
             empty_res[:, :, xyz] = res_slice
     else:  # For large images
-        batch = torch.cuda.mem_get_info()[0] // 1024**3 // round(d.shape[0]/3.5)  # An approximation for 1024x1024
+        if d.shape[0] > 5:
+            batch = torch.cuda.mem_get_info()[0] // 1024**3 // round(d.shape[0]/3.5)  # An approximation for 1024x1024
+        else:
+            batch = torch.cuda.mem_get_info()[0] // 1024**3  # Up to 5 channels would have (less than) ~1 GB VRAM usage
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
                 d[:, :, :, xyz], model, batch, pixel, m
