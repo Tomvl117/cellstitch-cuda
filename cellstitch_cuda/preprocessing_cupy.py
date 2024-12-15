@@ -18,9 +18,7 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     zoom_factors = (1, 1 / anisotropy, 1)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    masks = zoom(masks, zoom_factors, order=order)
-
-    masks = masks.get()
+    masks = zoom(masks, zoom_factors, order=order).get()
     cp._default_memory_pool.free_all_blocks()
 
     return masks
@@ -36,11 +34,9 @@ def upscale_pad_img(images, pixel=None, z_res=None):
     zoom_factors = (1, anisotropy, 1)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    images = cp.asarray(images)  # Cijk
-
     zoomed = []
     for ch in images:
-        ch = zoom(ch, zoom_factors, order=order).get()
+        ch = zoom(cp.asarray(ch), zoom_factors, order=order).get()
         cp._default_memory_pool.free_all_blocks()
         zoomed.append(ch)
 
