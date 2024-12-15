@@ -57,7 +57,7 @@ def upscale_pad_img(images, pixel=None, z_res=None):
 
 
 def histogram_correct(images, match: str = "first"):
-    """ Correct bleaching over a given axis
+    """Correct bleaching over a given axis
 
     This function is used to correct signal degradation that can occur over the Z axis.
 

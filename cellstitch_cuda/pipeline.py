@@ -108,7 +108,9 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose
         time_start = time.time()
         xy_masks = fill_holes_and_remove_small_masks(xy_masks)
         if verbose:
-            print("Time to fill holes and remove small masks: ", time.time() - time_start)
+            print(
+                "Time to fill holes and remove small masks: ", time.time() - time_start
+            )
 
     time_start = time.time()
     cp._default_memory_pool.free_all_blocks()
@@ -132,7 +134,7 @@ def cellstitch_cuda(
     filtering: bool = False,
     verbose: bool = False,
 ):
-    """ All-in-one function to segment and stitch 2D labels
+    """All-in-one function to segment and stitch 2D labels
 
     Full stitching pipeline, which does the following:
         1. Histogram-based signal degradation correction
@@ -212,7 +214,9 @@ def cellstitch_cuda(
                 [s for s in info if "spacing" in s][0].split("=")[-1]
             )  # At least it's pretty fast
         except:
-            print("No spacing (Z step) found in image metadata. The output might not be fully reliable.")
+            print(
+                "No spacing (Z step) found in image metadata. The output might not be fully reliable."
+            )
     elif z_step is None:
         print(
             "No z_step provided. The output might not be fully reliable. If unexpected, check the image metadata."
@@ -315,7 +319,9 @@ def cellstitch_cuda(
         if verbose:
             print("Running CellStitch stitching...")
 
-        cellstitch_masks = full_stitch(yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose)
+        cellstitch_masks = full_stitch(
+            yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose
+        )
 
         if output_masks:
             tifffile.imwrite(
@@ -326,6 +332,6 @@ def cellstitch_cuda(
 
     else:
         print(
-            "Incompatible stitching method. Supported options are \"iou\" and \"cellstitch\"."
+            'Incompatible stitching method. Supported options are "iou" and "cellstitch".'
         )
         sys.exit(1)

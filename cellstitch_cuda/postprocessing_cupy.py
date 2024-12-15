@@ -4,7 +4,7 @@ import cupy as cp
 
 
 def fill_holes_and_remove_small_masks(masks, min_size=15):
-    """ Fills holes in masks (2D/3D) and discards masks smaller than min_size.
+    """Fills holes in masks (2D/3D) and discards masks smaller than min_size.
 
     This function fills holes in each mask using scipy.ndimage.morphology.binary_fill_holes.
     It also removes masks that are smaller than the specified min_size.
@@ -29,8 +29,9 @@ def fill_holes_and_remove_small_masks(masks, min_size=15):
     """
 
     if masks.ndim > 3 or masks.ndim < 2:
-        raise ValueError("masks_to_outlines takes 2D or 3D array, not %dD array" %
-                         masks.ndim)
+        raise ValueError(
+            "masks_to_outlines takes 2D or 3D array, not %dD array" % masks.ndim
+        )
 
     slices = find_objects(masks)
     masks = cp.asarray(masks)
@@ -47,7 +48,7 @@ def fill_holes_and_remove_small_masks(masks, min_size=15):
                         msk[k] = binary_fill_holes(msk[k])
                 else:
                     msk = binary_fill_holes(msk)
-                masks[slc][msk] = (j + 1)
+                masks[slc][msk] = j + 1
                 j += 1
             cp._default_memory_pool.free_all_blocks()
 
