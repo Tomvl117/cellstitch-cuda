@@ -9,6 +9,11 @@ def fill_holes_and_remove_small_masks(masks, min_size=15):
     This function fills holes in each mask using scipy.ndimage.morphology.binary_fill_holes.
     It also removes masks that are smaller than the specified min_size.
 
+    Adapted from CellPose: https://github.com/MouseLand/cellpose
+        https://doi.org/10.1038/s41592-020-01018-x: Stringer, C., Wang, T., Michaelos, M., & Pachitariu, M. (2021).
+        Cellpose: a generalist algorithm for cellular segmentation. Nature methods, 18(1), 100-106.
+        Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
+
     Parameters:
     masks (ndarray): Int, 2D or 3D array of labelled masks.
         0 represents no mask, while positive integers represent mask labels.

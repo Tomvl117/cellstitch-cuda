@@ -57,6 +57,16 @@ def upscale_pad_img(images, pixel=None, z_res=None):
 
 
 def histogram_correct(images, match: str = "first"):
+    """ Correct bleaching over a given axis
+
+    This function is used to correct signal degradation that can occur over the Z axis.
+
+    Adapted from napari-bleach-correct: https://github.com/marx-alex/napari-bleach-correct
+        Authored by https://github.com/marx-alex
+        Original algorithm by Kota Miura: Miura K. Bleach correction ImageJ plugin for compensating the photobleaching
+        of time-lapse sequences. F1000Res. 2020 Dec 21;9:1494. https://doi.org/10.12688/f1000research.27171.1
+
+    """
     # cache image dtype
     dtype = images.dtype
 

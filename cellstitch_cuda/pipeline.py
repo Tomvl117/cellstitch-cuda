@@ -123,7 +123,8 @@ def cellstitch_cuda(
     bleach_correct: bool = True,
     verbose: bool = False,
 ):
-    """
+    """ All-in-one function to segment and stitch 2D labels
+
     Full stitching pipeline, which does the following:
         1. Histogram-based signal degradation correction
         2. Segmentation over the Z axis using InstanSeg
