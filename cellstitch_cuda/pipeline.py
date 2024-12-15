@@ -186,13 +186,15 @@ def cellstitch_cuda(
     elif not isinstance(img, np.ndarray):
         print("img must either be a path to an existing image, or a numpy ndarray.")
         sys.exit(1)
+    else:
+        metadata = {}
 
     # Check image dimensions
     if img.ndim != 4:
         print("Expected a 4D image (ZCYX), while the img dimensions are ", img.ndim)
         sys.exit(1)
 
-    # Set pixelsizes
+    # Set pixel sizes
     if pixel_size is None and "Info" in metadata:
         info = metadata["Info"].split()
         try:
