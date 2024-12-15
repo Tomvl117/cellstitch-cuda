@@ -328,3 +328,4 @@ def cellstitch_cuda(
         print(
             "Incompatible stitching method. Supported options are \"iou\" and \"cellstitch\"."
         )
+        sys.exit(1)
