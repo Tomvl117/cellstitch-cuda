@@ -156,12 +156,15 @@ def cellstitch_cuda(
     else:
         print("CUDA is not available; using CPU.")
 
+    # Initialize path
+    path = ""
+
     # Read image file
     if os.path.isfile(img):
-        with tifffile.TiffFile(img) as tif:
+        path = str(img)
+        with tifffile.TiffFile(path) as tif:
             img = tif.asarray()  # ZCYX
             metadata = tif.imagej_metadata or {}
-            del tif
     elif not isinstance(img, np.ndarray):
         print("img must either be a path to an existing image, or a numpy ndarray.")
         sys.exit(1)
@@ -201,8 +204,8 @@ def cellstitch_cuda(
 
     # Set up output path
     if output_masks:
-        if output_path is None and os.path.isfile(img):
-            output_path = os.path.split(img)[0]
+        if output_path is None and os.path.isfile(path):
+            output_path = os.path.split(path)[0]
         elif not os.path.exists(output_path):
             os.makedirs(output_path)
 
@@ -307,5 +310,5 @@ def cellstitch_cuda(
 
     else:
         print(
-            "Incompatible stitching method. Supported options are 'iou' and 'cellstitch_cuda'."
+            "Incompatible stitching method. Supported options are \"iou\" and \"cellstitch\"."
         )
