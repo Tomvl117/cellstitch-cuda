@@ -200,7 +200,7 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
             res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel, m)
             empty_res[:, :, xyz] = res_slice
     else:  # For large images
-        batch = torch.cuda.mem_get_info()[0] // 1024**3 // 4
+        batch = torch.cuda.mem_get_info()[0] // 1024**3 // round(d.shape[0]/3.5)  # An approximation for 1024x1024
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
                 d[:, :, :, xyz], model, batch, pixel, m
