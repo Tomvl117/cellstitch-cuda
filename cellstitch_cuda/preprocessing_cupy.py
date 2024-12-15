@@ -33,14 +33,18 @@ def upscale_pad_img(images, pixel=None, z_res=None):
         z_res = 1
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1, anisotropy, 1)
+    zoom_factors = (1, anisotropy, 1)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     images = cp.asarray(images)  # Cijk
 
-    images = zoom(images, zoom_factors, order=order)
+    zoomed = []
+    for ch in images:
+        ch = zoom(ch, zoom_factors, order=order).get()
+        cp._default_memory_pool.free_all_blocks()
+        zoomed.append(ch)
 
-    images = images.get()
+    images = np.stack(zoomed)
     cp._default_memory_pool.free_all_blocks()
 
     padding_width = 0
