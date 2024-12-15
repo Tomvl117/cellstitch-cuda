@@ -1,6 +1,7 @@
 import torch
 import tifffile
 import os
+import sys
 import numpy as np
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
@@ -113,7 +114,7 @@ def cellstitch_cuda(
     img,
     output_masks: bool = False,
     output_path=None,
-    stitch_method: str = "cellstitch_cuda",
+    stitch_method: str = "cellstitch",
     seg_mode: str = "nuclei_cells",
     pixel_size=None,
     z_step=None,
@@ -125,7 +126,7 @@ def cellstitch_cuda(
         1. Histogram-based signal degradation correction
         2. Segmentation over the Z axis using InstanSeg
         3. Stitching of 2D planes into 3D labels, by one of two methods:
-            a. Cellpose's powerful IoU calculation
+            a. Cellpose's standard Intersect over Union (IoU) calculation
             b. CellStitch's orthogonal labeling, which leverages Optimal Transport to create robust masks.
 
     Args:
@@ -134,8 +135,8 @@ def cellstitch_cuda(
             Default False
         output_path: Set to None to write to the input file location (if provided). Ignored of output_masks is False.
             Default None
-        stitch_method: "iou" for Cellpose stitching, or "cellstitch_cuda" for CellStitch stitching.
-            Default "cellstitch_cuda"
+        stitch_method: "iou" for Cellpose IoU stitching, or "cellstitch" for CellStitch stitching.
+            Default "cellstitch"
         seg_mode: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
             masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
             Default "nuclei_cells"
@@ -163,34 +164,40 @@ def cellstitch_cuda(
             del tif
     elif not isinstance(img, np.ndarray):
         print("img must either be a path to an existing image, or a numpy ndarray.")
-        quit()
+        sys.exit(1)
 
     # Check image dimensions
     if img.ndim != 4:
         print("Expected a 4D image (ZCYX), while the img dimensions are ", img.ndim)
-        quit()
+        sys.exit(1)
 
     # Set pixelsizes
-    if pixel_size is None:
-        if "Info" in metadata:
-            info = metadata["Info"].split()
+    if pixel_size is None and "Info" in metadata:
+        info = metadata["Info"].split()
+        try:
             pixel_size = 1 / float(
                 [s for s in info if "XResolution" in s][0].split("=")[-1]
             )  # Oh my gosh
-        else:
+        except Warning:
             print(
-                "Could not find the pixel_size in the metadata. The output might not be fully reliable."
+                "No XResolution found in image metadata. The output might not be fully reliable."
             )
-    if z_step is None:
-        if "Info" in metadata:
-            info = metadata["Info"].split()
+    else:
+        print(
+            "No pixel_size provided. The output might not be fully reliable. If unexpected, check the image metadata."
+        )
+    if z_step is None and "Info" in metadata:
+        info = metadata["Info"].split()
+        try:
             z_step = float(
                 [s for s in info if "spacing" in s][0].split("=")[-1]
             )  # At least it's pretty fast
-        else:
-            print(
-                "Could not find the z_step in the metadata. The output might not be fully reliable."
-            )
+        except Warning:
+            print("No spacing (Z step) found in image metadata. The output might not be fully reliable.")
+    else:
+        print(
+            "No z_step provided. The output might not be fully reliable. If unexpected, check the image metadata."
+        )
 
     # Set up output path
     if output_masks:
@@ -239,7 +246,7 @@ def cellstitch_cuda(
 
         return iou_masks
 
-    elif stitch_method == "cellstitch_cuda":
+    elif stitch_method == "cellstitch":
 
         # Segment over X-axis
         if verbose:
