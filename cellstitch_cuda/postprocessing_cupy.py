@@ -43,7 +43,8 @@ def fill_holes_and_remove_small_masks(masks, min_size=15):
                 masks[slc][msk] = 0
             elif npix > 0:
                 if msk.ndim == 3:
-                    msk = cp.asarray([binary_fill_holes(msk[k]) for k in range(msk.shape[0])])
+                    for k in range(msk.shape[0]):
+                        msk[k] = binary_fill_holes(msk[k])
                 else:
                     msk = binary_fill_holes(msk)
                 masks[slc][msk] = (j + 1)
