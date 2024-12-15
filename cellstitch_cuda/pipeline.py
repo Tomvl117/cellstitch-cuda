@@ -5,8 +5,9 @@ import sys
 import numpy as np
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
-from cellpose.utils import fill_holes_and_remove_small_masks, stitch3D
+from cellpose.utils import stitch3D
 from cellstitch_cuda import preprocessing_cupy as ppc
+from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks
 
 from .alignment import *
 
@@ -97,7 +98,8 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, verbose=False):
         print("Total time to stitch: ", time.time() - time_start)
     time_start = time.time()
 
-    xy_masks = cp.asarray(fill_holes_and_remove_small_masks(xy_masks))
+    xy_masks = fill_holes_and_remove_small_masks(cp.asarray(xy_masks))
+    cp._default_memory_pool.free_all_blocks()
 
     if verbose:
         print("Time to fill holes and remove small masks: ", time.time() - time_start)
