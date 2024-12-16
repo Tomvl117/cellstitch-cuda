@@ -195,7 +195,8 @@ def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
 def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
     empty_res = np.zeros_like(d[0])
     nslices = d.shape[-1]
-    if d.shape[1] < 1536 or d.shape[2] < 1536:  # For small images
+    size = d.shape[0] * d.shape[1] * d.shape[2]
+    if size < 21233664:  # For small images (9x1536x1536 as a base)
         for xyz in range(nslices):
             res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel, m)
             empty_res[:, :, xyz] = res_slice

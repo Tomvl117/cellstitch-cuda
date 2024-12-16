@@ -54,9 +54,17 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose=False):
-    """
-    Stitch masks in-place (top -> bottom).
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = False, verbose=False):
+    """Stitch masks in-place
+
+    Stitches masks from top to bottom.
+
+    Args:
+        xy_masks_prior: numpy.ndarray with XY masks
+        yz_masks: numpy.ndarray with YZ masks
+        xz_masks: numpy.ndarray with XZ masks
+        filter: Use CellPose-based fill_holes_and_remove_small_masks() function. Default False
+        verbose: Verbosity. Default False
     """
     xy_masks = xy_masks_prior.copy()
     num_frame = xy_masks.shape[0]
