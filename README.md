@@ -1,5 +1,5 @@
-# CellStitch-Instanseg: CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation.
-![Static Badge](https://img.shields.io/badge/CUDA-11.x%2C_12.x-instanseg)
+# CellStitch-Cuda: CUDA-accelerated CellStitch 3D labeling.
+![cuda-version](https://img.shields.io/badge/CUDA-11.x%2C_12.x-instanseg)
 
 ## About this repo
 An overhaul of the CellStitch algorithm, developed by Yining Liu and Yinuo Jin ([original repository](https://github.com/imyiningliu/cellstitch)), publication can be found [here](https://doi.org/10.1186/s12859-023-05608-2).
@@ -10,6 +10,10 @@ Some major adjustments:
 * Included novel segmentation method InstanSeg, which enables multichannel inputs ([repo](https://github.com/instanseg/instanseg) and [publication](https://doi.org/10.1101/2024.09.04.611150)).
 * An all-in-one method that takes an ZCYX-formatted .tif file, performs the correct transposes, and writes stitched labels.
 * Included a histogram-based bleach correction to adjust for signal degradation over the Z-axis (originally developed for ImageJ in (Miura 2020) and released for Python by [marx-alex](https://github.com/marx-alex) in [napari-bleach-correct](https://github.com/marx-alex/napari-bleach-correct)).
+
+### Some comparisons
+![img-a](figures/cellstitch_img-a.svg)
+![img-b](figures/cellstitch_img-b.svg)
 
 ## Installation
 ### Notes
