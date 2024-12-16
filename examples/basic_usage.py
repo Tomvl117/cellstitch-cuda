@@ -8,8 +8,7 @@ This is the bare minimum to run CUDA-accelerated CellStitch. Per the default set
     5. Correct for anisotropic measurements (XY to Z measurement difference).
     6. Segment YZ and XZ planes.
     7. Perform an optimized CellStitch calculation.
-    8. It will not filter small segments or fill holes.
-    9. It will not return any major progress messages or write any files to disk.
+    8. It will not return any major progress messages or write any files to disk.
 """
 
 

@@ -54,7 +54,7 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = False, verbose=False):
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose=False):
     """Stitch masks in-place
 
     Stitches masks from top to bottom.
@@ -140,7 +140,7 @@ def cellstitch_cuda(
     pixel_size=None,
     z_step=None,
     bleach_correct: bool = True,
-    filtering: bool = False,
+    filtering: bool = True,
     verbose: bool = False,
 ):
     """All-in-one function to segment and stitch 2D labels
@@ -170,9 +170,8 @@ def cellstitch_cuda(
         bleach_correct: Whether histogram-based signal degradation correction should be applied to img.
             Default True
         filtering: Whether the fill_holes_and_remove_small_masks function should be executed. With larger datasets, this
-            has the tendency to massively slow down the postprocessing. InstanSeg also pre-filters by default, so it
-            remains off by default.
-            Default False
+            has the tendency to massively slow down the postprocessing.
+            Default True
         verbose: Verbosity.
             Default False
     """
