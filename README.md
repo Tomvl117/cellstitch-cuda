@@ -1,7 +1,9 @@
 # CellStitch-Instanseg: CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation.
+![Static Badge](https://img.shields.io/badge/CUDA-11.x%2C_12.x-instanseg)
 
 ## About this repo
-An overhaul of the CellStitch algorithm, developed by Yining Liu and Yinuo Jin ([orignal repo](https://github.com/imyiningliu/cellstitch)), publication can be found [here](https://doi.org/10.1186/s12859-023-05608-2).
+An overhaul of the CellStitch algorithm, developed by Yining Liu and Yinuo Jin ([original repository](https://github.com/imyiningliu/cellstitch)), publication can be found [here](https://doi.org/10.1186/s12859-023-05608-2).
+
 Some major adjustments:
 * Replaced NumPy with CuPy for GPU-accelerated calculations.
 * Replaced nested for-loops with vectorized calculations for dramatic speedups (~100x).
@@ -23,19 +25,14 @@ conda install git
 git clone https://github.com/Tomvl117/cellstitch-instanseg.git
 cd cellstitch-instanseg
 pip install -e .
+conda install pytorch pytorch-cuda=12.1 -c conda-forge -c pytorch -c nvidia
 ```
-#### For CUDA 11.x
+You may replace the version number for `pytorch-cuda` with whatever is applicable for you.
+#### Additional steps for CUDA 11.x
 ```bash
 pip uninstall cupy-cuda12x
 pip install cupy-cuda11x
 ```
-### GPU acceleration (Windows)
-#### CUDA 12.1
-```bash
-conda install pytorch pytorch-cuda=12.1 -c conda-forge -c pytorch -c nvidia
-```
-You may replace the version number for `pytorch-cuda` with whatever is applicable for you.
-
 ## Instructions
 ### From an image
 ```python
