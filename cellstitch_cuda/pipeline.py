@@ -105,6 +105,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose
         print("Total time to stitch: ", time.time() - time_start)
 
     if filter:
+        cp._default_memory_pool.free_all_blocks()
         time_start = time.time()
         xy_masks = fill_holes_and_remove_small_masks(xy_masks)
         if verbose:
@@ -112,8 +113,8 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose
                 "Time to fill holes and remove small masks: ", time.time() - time_start
             )
 
-    time_start = time.time()
     cp._default_memory_pool.free_all_blocks()
+    time_start = time.time()
 
     xy_masks = overseg_correction(xy_masks)
 
