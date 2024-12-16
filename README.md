@@ -12,8 +12,14 @@ Some major adjustments:
 * Included a histogram-based bleach correction to adjust for signal degradation over the Z-axis (originally developed for ImageJ in (Miura 2020) and released for Python by [marx-alex](https://github.com/marx-alex) in [napari-bleach-correct](https://github.com/marx-alex/napari-bleach-correct)).
 
 ### Some comparisons
+The calculations were run on the same machine (GPU: NVIDIA Quadro RTX 6000 24 GB; CPU: Intel Xeon Gold 6252 (48/96 cores); RAM: 1024 GB), the core count of which gave it a clear parallel-processing advantage. This particularly affects the `fill_holes_and_remove_small_masks` function, which has been rewritten to utilize parallel processing.
 ![img-a](figures/cellstitch_img-a.svg)
+
+In image A, GPU VRAM load was ~200 MB at its peak.
+
 ![img-b](figures/cellstitch_img-b.svg)
+
+In image B, GPU VRAM load was ~2442 MB at its peak
 
 ## Installation
 ### Notes
