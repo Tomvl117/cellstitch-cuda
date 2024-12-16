@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cellstitch-instanseg"
+name = "cellstitch-cuda"
 version = "1.0.0"
 description = "CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation."
 readme = "README.md"
@@ -14,7 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 keywords = ["3D labeling", "Cell labels", "Instanseg"]
-dependencies = ["instanseg-torch>=0.0.6", "cellpose>=3.1.0", "POT>=0.8.1", "sphinx", "sphinxcontrib-apidoc", "tifffile", "cupy-cuda12x"]
+dependencies = ["instanseg-torch>=0.0.6", "cellpose>=3.1.0", "POT>=0.8.1", "sphinx", "sphinxcontrib-apidoc", "tifffile", "numpy<2.0.0", "cupy-cuda12x"]
 requires-python = ">=3.9, <3.12"
 
 [tool.setuptools]
@@ -24,7 +24,7 @@ package-dir = {""="cellstitch_cuda"}
 [tool.mypy]
 python_version = '3.9'
 mypy_path = ['cellstitch_cuda']
-packages = "cellstitch-instanseg"
+packages = "cellstitch-cuda"
 strict = true
 
 [tool.black]
@@ -44,6 +44,6 @@ push = true
     'current_version = "{version}"',
     'version = "{version}"',
 ]
-"cellstitch/version.py" = [
+"cellstitch_cuda/version.py" = [
     "{version}"
 ]
