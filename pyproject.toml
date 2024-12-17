@@ -9,13 +9,23 @@ description = "CUDA-accelerated CellStitch 3D labeling using Instanseg segmentat
 readme = "README.md"
 authors = [{name = "Tom van Leeuwen", email = "tom@tleeuwen.nl"}]
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-    "Programming Language :: Python",
+    "License :: OSI Approved :: MIT",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["3D labeling", "Cell labels", "Instanseg"]
-dependencies = ["instanseg-torch>=0.0.6", "cellpose>=3.1.0", "POT>=0.8.1", "sphinx", "sphinxcontrib-apidoc", "tifffile", "numpy<2.0.0", "cupy-cuda12x", "joblib"]
+keywords = ["3D labeling", "Cell labels", "2D Stitching"]
+dependencies = [
+    "instanseg-torch>=0.0.6",
+    "cellpose>=3.1.0",
+    "POT>=0.8.1",
+    "sphinx",
+    "sphinxcontrib-apidoc",
+    "tifffile",
+    "numpy<2.0.0",
+    "cupy-cuda12x",
+    "joblib",
+]
 requires-python = ">=3.9, <3.12"
+urls = { "Project-URL" = "https://github.com/Tomvl117/cellstitch-cuda" }
 
 [tool.setuptools]
 py-modules = []
