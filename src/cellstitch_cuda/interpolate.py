@@ -1,13 +1,9 @@
-import os
 import ot
 import ot.plot
 import cupy as cp
-import matplotlib.pyplot as plt
-from copy import deepcopy
 from cupyx.scipy import ndimage as ndi
 
 from cellpose import utils as cp_utils
-from cellpose import plot as cp_plot
 
 
 # -------------------------------

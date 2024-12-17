@@ -29,17 +29,7 @@ dependencies = [
     "joblib",
 ]
 requires-python = ">=3.9, <3.12"
-urls = { "Project-URL" = "https://github.com/Tomvl117/cellstitch-cuda" }
-
-[tool.setuptools]
-py-modules = []
-package-dir = {""="cellstitch_cuda"}
-
-[tool.mypy]
-python_version = '3.9'
-mypy_path = ['cellstitch_cuda']
-packages = "cellstitch-cuda"
-strict = true
+urls = { "Homepage" = "https://github.com/Tomvl117/cellstitch-cuda" }
 
 [tool.black]
 line-length = 88
@@ -51,8 +41,6 @@ version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
 tag_scope = "default"
-pre_commit_hook = ""
-post_commit_hook = ""
 commit = true
 tag = true
 push = true

@@ -3,10 +3,10 @@ import tifffile
 import os
 import sys
 import numpy as np
+import cellstitch_cuda.preprocessing_cupy as ppc
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
-from cellstitch_cuda import preprocessing_cupy as ppc
 from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks
 
 from .alignment import *

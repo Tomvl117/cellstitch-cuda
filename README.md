@@ -48,7 +48,7 @@ from cellstitch_cuda.pipeline import cellstitch_cuda
 img = "path/to/image.tif"
 # or feed img as a numpy ndarray
 
-3d_masks = cellstitch_cuda(img)
+volumetric_masks = cellstitch_cuda(img)
 ```
 ### From pre-existing orthogonal labels
 ```python
@@ -56,7 +56,7 @@ from cellstitch_cuda.pipeline import full_stitch
 
 # Define xy_masks, yz_masks, xz_masks in some way
 
-3d_masks = full_stitch(xy_masks, yz_masks, xz_masks)
+volumetric_masks = full_stitch(xy_masks, yz_masks, xz_masks)
 ```
 
 ## References
