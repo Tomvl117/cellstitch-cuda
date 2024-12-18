@@ -1,15 +1,13 @@
-import torch
 import tifffile
 import os
 import sys
-import numpy as np
-import cellstitch_cuda.preprocessing_cupy as ppc
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
-from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks
+from .postprocessing_cupy import fill_holes_and_remove_small_masks
 
 from .alignment import *
+from .preprocessing_cupy import *
 
 
 def relabel_layer(masks, z, lbls):
@@ -244,7 +242,7 @@ def cellstitch_cuda(
 
     # Correct bleaching over Z-axis
     if bleach_correct:
-        img = ppc.histogram_correct(img).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
+        img = histogram_correct(img).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
         cp._default_memory_pool.free_all_blocks()
         if verbose:
             print("Finished bleach correction.")
@@ -254,7 +252,7 @@ def cellstitch_cuda(
     # Segment over Z-axis
     if verbose:
         print("Segmenting YX planes (Z-axis).")
-    yx_masks = ppc.segmentation(img, model, pixel_size, seg_mode).transpose(
+    yx_masks = segmentation(img, model, pixel_size, seg_mode).transpose(
         2, 0, 1
     )  # YXZ -> ZYX
     if torch.cuda.is_available():
@@ -285,14 +283,14 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting YZ planes (X-axis).")
         transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-        transposed_img, padding = ppc.upscale_pad_img(
+        transposed_img, padding = upscale_pad_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess YZ planes
         cp._default_memory_pool.free_all_blocks()
-        yz_masks = ppc.segmentation(transposed_img, model, pixel_size, seg_mode)
+        yz_masks = segmentation(transposed_img, model, pixel_size, seg_mode)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
-        yz_masks = ppc.crop_downscale_mask(
+        yz_masks = crop_downscale_mask(
             yz_masks, padding, pixel_size, z_step
         ).transpose(
             1, 0, 2
@@ -305,14 +303,14 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting XZ planes (Y-axis).")
         transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-        transposed_img, padding = ppc.upscale_pad_img(
+        transposed_img, padding = upscale_pad_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess XZ planes
         cp._default_memory_pool.free_all_blocks()
-        xz_masks = ppc.segmentation(transposed_img, model, pixel_size, seg_mode)
+        xz_masks = segmentation(transposed_img, model, pixel_size, seg_mode)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
-        xz_masks = ppc.crop_downscale_mask(
+        xz_masks = crop_downscale_mask(
             xz_masks, padding, pixel_size, z_step
         ).transpose(
             1, 2, 0

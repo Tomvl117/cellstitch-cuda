@@ -1,8 +1,9 @@
 import ot
 from skimage import color
-from cellstitch_cuda.frame import *
 import matplotlib.pyplot as plt
 from cellpose.metrics import _label_overlap
+
+from .frame import *
 import time
 
 

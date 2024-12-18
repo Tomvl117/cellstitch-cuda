@@ -9,7 +9,7 @@ from scipy.spatial.qhull import QhullError
 from skimage.measure import marching_cubes, mesh_surface_area
 from skimage.metrics import variation_of_information
 
-from cellstitch_cuda.alignment import *
+from .alignment import *
 
 
 # --------------------
