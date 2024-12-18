@@ -188,7 +188,7 @@ def cellstitch_cuda(
         path = str(img)
         with tifffile.TiffFile(path) as tif:
             img = tif.asarray()  # ZCYX
-            metadata = tif.imagej_metadata or {}
+            tags = tif.pages[0].tags
     elif not isinstance(img, np.ndarray):
         print("img must either be a path to an existing image, or a numpy ndarray.")
         sys.exit(1)
@@ -201,34 +201,27 @@ def cellstitch_cuda(
         sys.exit(1)
 
     # Set pixel sizes
-    if pixel_size is None and "Info" in metadata:
-        info = metadata["Info"].split()
+    if pixel_size is None:
         try:
-            pixel_size = 1 / float(
-                [s for s in info if "XResolution" in s][0].split("=")[-1]
-            )  # Oh my gosh
+            pixel_size = tags["XResolution"].value[0] / tags["XResolution"].value[1]
+            if verbose:
+                print("Pixel size:", pixel_size)
         except:
             print(
                 "No XResolution found in image metadata. The output might not be fully reliable."
             )
-    elif pixel_size is None:
-        print(
-            "No pixel_size provided. The output might not be fully reliable. If unexpected, check the image metadata."
-        )
-    if z_step is None and "Info" in metadata:
-        info = metadata["Info"].split()
+    if z_step is None:
         try:
+            img_descr = tags["ImageDescription"].value.split()
             z_step = float(
-                [s for s in info if "spacing" in s][0].split("=")[-1]
+                [s for s in img_descr if "spacing" in s][0].split("=")[-1]
             )  # At least it's pretty fast
+            if verbose:
+                print("Z step:", z_step)
         except:
             print(
                 "No spacing (Z step) found in image metadata. The output might not be fully reliable."
             )
-    elif z_step is None:
-        print(
-            "No z_step provided. The output might not be fully reliable. If unexpected, check the image metadata."
-        )
 
     # Set up output path
     if output_masks:
