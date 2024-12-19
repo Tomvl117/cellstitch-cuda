@@ -26,13 +26,14 @@ In image B, GPU VRAM load was ~2442 MB at its peak
 This setup has so far only been verified on Windows-based, CUDA-accelerated machines. Testing has only been performed on CUDA 12.x. There are no reasons why 11.x should not work (check instructions), but your mileage may vary.
 ### Conda setup
 ```bash
-conda create -n cellstitch-cuda python=3.9
+conda create -n cellstitch-cuda python=3.11
 conda activate cellstitch-cuda
 ```
 ### Install using PyPi
 ```bash
 pip install cellstitch-cuda
-conda install pytorch pytorch-cuda=12.1 -c conda-forge -c pytorch -c nvidia
+pip uninstall torch
+conda install pytorch pytorch-cuda=12.4 -c conda-forge -c pytorch -c nvidia
 ```
 You may replace the version number for `pytorch-cuda` with whatever is applicable for you.
 #### Additional steps for CUDA 11.x

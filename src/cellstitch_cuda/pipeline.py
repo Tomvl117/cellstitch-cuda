@@ -5,9 +5,10 @@ from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
 from .postprocessing_cupy import fill_holes_and_remove_small_masks, filter_nuclei_cells
+from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks
 
-from .alignment import *
-from .preprocessing_cupy import *
+from cellstitch_cuda.alignment import *
+from cellstitch_cuda.preprocessing_cupy import *
 
 
 def relabel_layer(masks, z, lbls):
@@ -201,7 +202,7 @@ def cellstitch_cuda(
     # Set pixel sizes
     if pixel_size is None:
         try:
-            pixel_size = tags["XResolution"].value[0] / tags["XResolution"].value[1]
+            pixel_size = 1 / (tags["XResolution"].value[0] / tags["XResolution"].value[1])
             if verbose:
                 print("Pixel size:", pixel_size)
         except:
