@@ -66,6 +66,9 @@ def filter_nuclei_cells(volumetric_masks, nuclei_masks):
     # Initialize new label ID
     new_label_id = 0
 
+    nuclei_masks = cp.asarray(nuclei_masks)
+    volumetric_masks = cp.asarray(volumetric_masks)
+
     nuclear_cells = cp.zeros_like(volumetric_masks)
 
     unique_labels = cp.unique(nuclei_masks)

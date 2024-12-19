@@ -1,5 +1,6 @@
-.idea/
+/.idea/
 */__pycache__/
+src/cellstitch_cuda/__pycache__/
 *.egg-info/
 .ipynb_checkpoints/
 .DS_Store
@@ -9,4 +10,4 @@ data/
 dist/
 figures/
 results/
-dev/
+src/dev/

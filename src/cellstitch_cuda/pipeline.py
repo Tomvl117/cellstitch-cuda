@@ -52,7 +52,7 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose=False):
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei = None, filter: bool = True, verbose=False):
     """Stitch masks in-place
 
     Stitches masks from top to bottom.
@@ -120,6 +120,16 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, filter: bool = True, verbose
             )
 
     cp._default_memory_pool.free_all_blocks()
+
+    if not nuclei is None:
+        time_start = time.time()
+        xy_masks = filter_nuclei_cells(xy_masks, nuclei)
+        cp._default_memory_pool.free_all_blocks()
+        if verbose:
+            print(
+                "Time to filter cells with nuclei: ", time.time() - time_start
+            )
+
     time_start = time.time()
 
     xy_masks = overseg_correction(xy_masks)
@@ -336,12 +346,14 @@ def cellstitch_cuda(
         if verbose:
             print("Running CellStitch stitching...")
 
-        cellstitch_masks = full_stitch(
-            yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose
-        )
-
         if seg_mode == "nuclei_masks":
-            cellstitch_masks = filter_nuclei_cells(cellstitch_masks, nuclei)
+            cellstitch_masks = full_stitch(
+                yx_masks, yz_masks, xz_masks, nuclei, filter=filtering, verbose=verbose
+            )
+        else:
+            cellstitch_masks = full_stitch(
+                yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose
+            )
 
         if output_masks:
             tifffile.imwrite(
