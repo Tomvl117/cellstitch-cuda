@@ -129,29 +129,6 @@ def _correct(channel, match):
     return channel
 
 
-def _filter_nuclei_cells(res):
-    # Initialize new label ID
-    new_label_id = 0
-
-    nuclear_cells = cp.zeros_like(res[1])
-
-    unique_labels = cp.unique(res[0])
-    for label_id in unique_labels[unique_labels != 0]:
-        # Find the coordinates of the current label in the nuclei layer
-        coords = cp.argwhere(res[0] == label_id)
-
-        # Check if any of these coordinates are also labeled in the cell layer
-        cell_ids = res[1][coords[:, 0], coords[:, 1]]
-        colocalized_cells = cell_ids[cell_ids != 0]
-
-        if colocalized_cells.size > 0:
-            cell_id = colocalized_cells[0]
-            nuclear_cells[res[1] == cell_id] = new_label_id
-            new_label_id += 1
-
-    return nuclear_cells.get()
-
-
 def segment_single_slice_medium(
     d, model, batch_size, pixel=None, m: str = "nuclei_cells"
 ):
@@ -163,43 +140,40 @@ def segment_single_slice_medium(
         tile_size=1024,
         batch_size=batch_size,
     )
-
-    if m == "nuclei":
-        res = np.asarray(res[0][0], dtype="uint")
-    elif m == "cells":
-        res = np.asarray(res[0][1], dtype="uint")
-    elif m == "nuclei_cells":
-        res = _filter_nuclei_cells(cp.asarray(res[0], dtype="uint"))
-
-    return res
+    return res[0]
 
 
-def segment_single_slice_small(d, model, pixel=None, m: str = "nuclei_cells"):
+def segment_single_slice_small(d, model, pixel=None):
     res, image_tensor = model.eval_small_image(
         d,
         pixel,
         target="all_outputs",
         cleanup_fragments=True,
     )
-
-    if m == "nuclei":
-        res = np.asarray(res[0][0], dtype="uint")
-    elif m == "cells":
-        res = np.asarray(res[0][1], dtype="uint")
-    elif m == "nuclei_cells":
-        res = _filter_nuclei_cells(cp.asarray(res[0], dtype="uint"))
-
-    return res
+    return res[0]
 
 
-def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
+def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False):
     empty_res = np.zeros_like(d[0])
+
+    mode = 1  # Base for 'nuclei_cells' and 'cells'
+    if m == "nuclei":
+        mode = 0
+
+    nuclei_cells = False
+    if xy and m == "nuclei_cells":
+        nuclei = empty_res.copy()
+        nuclei_cells = True
+
     nslices = d.shape[-1]
+
     size = d.shape[0] * d.shape[1] * d.shape[2]
     if size < 21233664:  # For small images (9x1536x1536 as a base)
         for xyz in range(nslices):
-            res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel, m)
-            empty_res[:, :, xyz] = res_slice
+            res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel)
+            empty_res[:, :, xyz] = res_slice[mode]
+            if nuclei_cells:
+                nuclei[:, :, xyz] = res_slice[0]
     else:  # For large images
         if d.shape[0] > 5:
             batch = torch.cuda.mem_get_info()[0] // 1024**3 // round(d.shape[0]/3.5)  # An approximation for 1024x1024
@@ -207,7 +181,12 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells"):
             batch = torch.cuda.mem_get_info()[0] // 1024**3  # Up to 5 channels would have (less than) ~1 GB VRAM usage
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(
-                d[:, :, :, xyz], model, batch, pixel, m
+                d[:, :, :, xyz], model, batch, pixel
             )
-            empty_res[:, :, xyz] = res_slice
+
+            empty_res[:, :, xyz] = res_slice[mode]
+            if nuclei_cells:
+                nuclei[:, :, xyz] = res_slice[0]
+    if nuclei_cells:
+        return empty_res, nuclei
     return empty_res

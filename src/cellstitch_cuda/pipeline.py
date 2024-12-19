@@ -4,7 +4,7 @@ import sys
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
-from .postprocessing_cupy import fill_holes_and_remove_small_masks
+from .postprocessing_cupy import fill_holes_and_remove_small_masks, filter_nuclei_cells
 
 from .alignment import *
 from .preprocessing_cupy import *
@@ -192,8 +192,6 @@ def cellstitch_cuda(
     elif not isinstance(img, np.ndarray):
         print("img must either be a path to an existing image, or a numpy ndarray.")
         sys.exit(1)
-    else:
-        metadata = {}
 
     # Check image dimensions
     if img.ndim != 4:
@@ -235,21 +233,36 @@ def cellstitch_cuda(
 
     # Correct bleaching over Z-axis
     if bleach_correct:
-        img = histogram_correct(img).transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
+        img = histogram_correct(img)
         cp._default_memory_pool.free_all_blocks()
         if verbose:
             print("Finished bleach correction.")
-    else:
-        img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
+
+    img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
 
     # Segment over Z-axis
     if verbose:
         print("Segmenting YX planes (Z-axis).")
-    yx_masks = segmentation(img, model, pixel_size, seg_mode).transpose(
-        2, 0, 1
-    )  # YXZ -> ZYX
+    if seg_mode == "nuclei_cells":
+        yx_masks = segmentation(img, model, pixel_size, seg_mode, xy=True)
+
+        nuclei = yx_masks[1].transpose(
+            2, 0, 1
+        )  # YXZ -> ZYX
+        yx_masks = yx_masks[0].transpose(
+            2, 0, 1
+        )  # YXZ -> ZYX
+
+        if output_masks:
+            tifffile.imwrite(os.path.join(output_path, "nuclei_masks.tif"), nuclei)
+    else:
+        yx_masks = segmentation(img, model, pixel_size, seg_mode, xy=True).transpose(
+            2, 0, 1
+        )  # YXZ -> ZYX
+
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
+
     if output_masks:
         tifffile.imwrite(os.path.join(output_path, "yx_masks.tif"), yx_masks)
 
@@ -264,6 +277,9 @@ def cellstitch_cuda(
             print("Running IoU stitching...")
 
         iou_masks = stitch3D(yx_masks, stitch_threshold=0.25)
+
+        if seg_mode == "nuclei_cells":
+            iou_masks = filter_nuclei_cells(iou_masks, nuclei)
 
         if output_masks:
             tifffile.imwrite(os.path.join(output_path, "iou_masks.tif"), iou_masks)
@@ -323,6 +339,9 @@ def cellstitch_cuda(
         cellstitch_masks = full_stitch(
             yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose
         )
+
+        if seg_mode == "nuclei_masks":
+            cellstitch_masks = filter_nuclei_cells(cellstitch_masks, nuclei)
 
         if output_masks:
             tifffile.imwrite(

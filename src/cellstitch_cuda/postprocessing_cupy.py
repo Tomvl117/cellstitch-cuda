@@ -1,3 +1,4 @@
+import cupy as cp
 from scipy.ndimage import find_objects, binary_fill_holes
 from joblib import Parallel, delayed
 
@@ -59,3 +60,26 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
             masks[slc][msk] = (j + 1)
             j += 1
     return masks
+
+
+def filter_nuclei_cells(volumetric_masks, nuclei_masks):
+    # Initialize new label ID
+    new_label_id = 0
+
+    nuclear_cells = cp.zeros_like(volumetric_masks)
+
+    unique_labels = cp.unique(nuclei_masks)
+    for label_id in unique_labels[unique_labels != 0]:
+        # Find the coordinates of the current label in the nuclei layer
+        coords = cp.argwhere(nuclei_masks == label_id)
+
+        # Check if any of these coordinates are also labeled in the cell layer
+        cell_ids = volumetric_masks[coords[:, 0], coords[:, 1], coords[:, 2]]
+        colocalized_cells = cell_ids[cell_ids != 0]
+
+        if colocalized_cells.size > 0:
+            cell_id = colocalized_cells[0]
+            nuclear_cells[volumetric_masks == cell_id] = new_label_id
+            new_label_id += 1
+
+    return nuclear_cells.get()
