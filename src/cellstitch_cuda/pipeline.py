@@ -4,10 +4,10 @@ import sys
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
-from .postprocessing_cupy import fill_holes_and_remove_small_masks
+from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks
 
-from .alignment import *
-from .preprocessing_cupy import *
+from cellstitch_cuda.alignment import *
+from cellstitch_cuda.preprocessing_cupy import *
 
 
 def relabel_layer(masks, z, lbls):

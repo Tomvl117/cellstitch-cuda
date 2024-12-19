@@ -3,7 +3,7 @@ from skimage import color
 import matplotlib.pyplot as plt
 from cellpose.metrics import _label_overlap
 
-from .frame import *
+from cellstitch_cuda.frame import *
 import time
 
 
