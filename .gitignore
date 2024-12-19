@@ -1,5 +1,4 @@
-*/.idea/
-*.idea/*
+.idea/
 */__pycache__/
 *.egg-info/
 .ipynb_checkpoints/
