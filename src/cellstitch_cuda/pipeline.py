@@ -203,7 +203,7 @@ def cellstitch_cuda(
     # Set pixel sizes
     if pixel_size is None:
         try:
-            pixel_size = tags["XResolution"].value[0] / tags["XResolution"].value[1]
+            pixel_size = 1 / (tags["XResolution"].value[0] / tags["XResolution"].value[1])
             if verbose:
                 print("Pixel size:", pixel_size)
         except:
