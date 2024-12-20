@@ -70,7 +70,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
     if debug:
         n_jobs = 1
 
-    xy_masks = xy_masks_prior.copy()
+    xy_masks = np.array(xy_masks_prior, dtype="uint32")
     num_frame = xy_masks.shape[0]
     prev_index = 0
 
@@ -96,12 +96,14 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
             yz_not_stitched = cp.asarray(
                 (yz_masks[prev_index] != 0)
                 * (yz_masks[curr_index] != 0)
-                * (yz_masks[prev_index] != yz_masks[curr_index])
+                * (yz_masks[prev_index] != yz_masks[curr_index]),
+                dtype="uint32"
             )
             xz_not_stitched = cp.asarray(
                 (xz_masks[prev_index] != 0)
                 * (xz_masks[curr_index] != 0)
-                * (xz_masks[prev_index] != xz_masks[curr_index])
+                * (xz_masks[prev_index] != xz_masks[curr_index]),
+                dtype="uint32"
             )
 
             fp = FramePair(
