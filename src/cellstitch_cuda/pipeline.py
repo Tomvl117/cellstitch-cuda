@@ -235,9 +235,17 @@ def cellstitch_cuda(
             if verbose:
                 print("Z step:", z_step)
         except:
-            print(
-                "No spacing (Z step) found in image metadata. The output might not be fully reliable."
-            )
+            try:
+                img_descr = tags["IJMetadata"].value["Info"].split()
+                z_step = float(
+                    [s for s in img_descr if "spacing" in s][0].split("=")[-1]
+                )  # It's even funnier the second time
+                if verbose:
+                    print("Z step:", z_step)
+            except:
+                print(
+                    "No spacing (Z step) found in image metadata. The output might not be fully reliable."
+                )
 
     # Set up output path
     if output_masks:
