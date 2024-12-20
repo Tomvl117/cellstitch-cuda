@@ -1,6 +1,7 @@
 import cupy as cp
 import numpy as np
 import torch
+import sys
 from cupyx.scipy.ndimage import zoom
 
 
@@ -130,14 +131,14 @@ def _correct(channel, match):
 
 
 def segment_single_slice_medium(
-    d, model, batch_size, pixel=None, m: str = "nuclei_cells"
+    d, model, tiles, batch_size, pixel=None, m: str = "nuclei_cells"
 ):
     res, image_tensor = model.eval_medium_image(
         d,
         pixel,
         target="all_outputs",
         cleanup_fragments=True,
-        tile_size=1024,
+        tile_size=tiles,
         batch_size=batch_size,
         normalise=False,  # We already have normalized our data beforehand
     )
@@ -170,24 +171,36 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False
     nslices = d.shape[-1]
 
     d = normalize_img(d)  # Pre-normalize data
+    cp._default_memory_pool.free_all_blocks()
 
-    size = d.shape[0] * d.shape[1] * d.shape[2]
-    if size < 21233664:  # For small images (9x1536x1536 as a base)
+    vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
+    vram_est = 0.1765 * np.prod(d.shape[0:3])  # Magic number literally obtained by plotting in Excel
+
+    tiles = 1024
+    if vram < vram_est:
+        small = False
+        vram_est = 0.1765 * tiles**2 * d.shape[0]  # Base VRAM estimate on batch size, multiplied by channels
+        batch = int(vram / vram_est)
+        if batch == 0:
+            print("Not enough VRAM available for 1024x1024 tiles. Decreasing to standard 512x512.")
+            tiles = 512
+            vram_est = 0.1765 * tiles**2 * d.shape[0]
+            batch = int(vram / vram_est)
+            if batch == 0:
+                print("Not enough VRAM available for 512x512 tiles. Aborting.")
+                sys.exit(1)
+    else:
+        small = True
+
+    if small:  # For images that fit within VRAM in their entirety
         for xyz in range(nslices):
             res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel)
             empty_res[:, :, xyz] = res_slice[mode]
             if nuclei_cells:
                 nuclei[:, :, xyz] = res_slice[0]
-    else:  # For large images
-        if d.shape[0] > 5:
-            batch = torch.cuda.mem_get_info()[0] // 1024**3 // round(d.shape[0]/4)  # An approximation for 1024x1024
-        else:
-            batch = torch.cuda.mem_get_info()[0] // 1024**3  # Up to 5 channels would have (less than) ~1 GB VRAM usage
+    else:  # For larger images
         for xyz in range(nslices):
-            res_slice = segment_single_slice_medium(
-                d[:, :, :, xyz], model, batch, pixel
-            )
-
+            res_slice = segment_single_slice_medium(d[:, :, :, xyz], model, tiles, batch, pixel)
             empty_res[:, :, xyz] = res_slice[mode]
             if nuclei_cells:
                 nuclei[:, :, xyz] = res_slice[0]
@@ -203,14 +216,21 @@ def normalize_img(img, percentile=0.1, epsilon: float = 1e-3):
 
     Adapted from Instanseg (instanseg.utils.utils.percentile_normalize()).
     """
-    im = []
-    for c in range(img.shape[0]):
-        im_temp = cp.asarray(img[c])
-        p_min = cp.percentile(im_temp, percentile, axis=(0, 1), keepdims=True).get()
+    normalized = []
+    for ch in img:
+        ch = _normalize(cp.asarray(ch), percentile, epsilon)
         cp._default_memory_pool.free_all_blocks()
-        p_max = cp.percentile(im_temp, 100 - percentile, axis=(0, 1), keepdims=True).get()
-        im_temp = im_temp.get()
-        cp._default_memory_pool.free_all_blocks()
-        im.append(((im_temp - p_min) / np.maximum(epsilon, p_max - p_min)).astype("float32"))
+        normalized.append(ch)
 
-    return np.stack(im)
+    img = np.stack(normalized)
+
+    return img
+
+
+def _normalize(img, percentile, epsilon):
+    p_min = cp.percentile(img, percentile, axis=(0, 1), keepdims=True).astype("float32").get()
+    cp._default_memory_pool.free_all_blocks()
+    p_max = cp.percentile(img, 100 - percentile, axis=(0, 1), keepdims=True).astype("float32").get()
+    cp._default_memory_pool.free_all_blocks()
+    maximum = np.maximum(epsilon, p_max - p_min)
+    return ((img.get() - p_min) / maximum)
