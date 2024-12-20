@@ -52,7 +52,7 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei = None, filter: bool = True, verbose=False):
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = True, debug=False, verbose=False):
     """Stitch masks in-place
 
     Stitches masks from top to bottom.
@@ -61,9 +61,15 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei = None, filter: bool 
         xy_masks_prior: numpy.ndarray with XY masks
         yz_masks: numpy.ndarray with YZ masks
         xz_masks: numpy.ndarray with XZ masks
-        filter: Use CellPose-based fill_holes_and_remove_small_masks() function. Default False
+        nuclei: numpy.ndarray with XY masks of nuclei
+        filter: Use CellPose-based fill_holes_and_remove_small_masks() function. Default True
+        debug: Set n_jobs to 1 for parallel processing tasks. Default False
         verbose: Verbosity. Default False
     """
+    n_jobs = -1  # Use all cores by default
+    if debug:
+        n_jobs = 1
+
     xy_masks = xy_masks_prior.copy()
     num_frame = xy_masks.shape[0]
     prev_index = 0
@@ -113,7 +119,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei = None, filter: bool 
     if filter:
         cp._default_memory_pool.free_all_blocks()
         time_start = time.time()
-        xy_masks = fill_holes_and_remove_small_masks(xy_masks)
+        xy_masks = fill_holes_and_remove_small_masks(xy_masks, n_jobs=n_jobs)
         if verbose:
             print(
                 "Time to fill holes and remove small masks: ", time.time() - time_start
