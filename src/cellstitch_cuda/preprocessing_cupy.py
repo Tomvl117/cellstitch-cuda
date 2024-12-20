@@ -139,6 +139,7 @@ def segment_single_slice_medium(
         cleanup_fragments=True,
         tile_size=1024,
         batch_size=batch_size,
+        normalise=False,  # We already have normalized our data beforehand
     )
     return res[0]
 
@@ -149,6 +150,7 @@ def segment_single_slice_small(d, model, pixel=None):
         pixel,
         target="all_outputs",
         cleanup_fragments=True,
+        normalise=False,  # We already have normalized our data beforehand
     )
     return res[0]
 
@@ -166,6 +168,8 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False
         nuclei_cells = True
 
     nslices = d.shape[-1]
+
+    d = normalize_img(d)  # Pre-normalize data
 
     size = d.shape[0] * d.shape[1] * d.shape[2]
     if size < 21233664:  # For small images (9x1536x1536 as a base)
@@ -190,3 +194,23 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False
     if nuclei_cells:
         return empty_res, nuclei
     return empty_res
+
+
+def normalize_img(img, percentile=0.1, epsilon: float = 1e-3):
+    """"
+    Normalize all planes of a given axis (in this case, the last axis). The image is split into channels to relieve GPU
+    strain.
+
+    Adapted from Instanseg (instanseg.utils.utils.percentile_normalize()).
+    """
+    im = []
+    for c in range(img.shape[0]):
+        im_temp = cp.asarray(img[c])
+        p_min = cp.percentile(im_temp, percentile, axis=(0, 1), keepdims=True).get()
+        cp._default_memory_pool.free_all_blocks()
+        p_max = cp.percentile(im_temp, 100 - percentile, axis=(0, 1), keepdims=True).get()
+        im_temp = im_temp.get()
+        cp._default_memory_pool.free_all_blocks()
+        im.append(((im_temp - p_min) / np.maximum(epsilon, p_max - p_min)).astype("float32"))
+
+    return np.stack(im)
