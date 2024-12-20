@@ -8,7 +8,7 @@ def process_slice(i, slc, masks):
     if slc is not None:
         msk = masks[slc] == (i + 1)
         if msk.ndim == 3:
-            msk = [cupy_binary_fill_holes(msk[k]) for k in range(msk.shape[0])]
+            msk = np.array([binary_fill_holes(msk[k]) for k in range(msk.shape[0])])
         else:
             msk = binary_fill_holes(msk)
         return slc, msk
