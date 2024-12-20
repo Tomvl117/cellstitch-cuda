@@ -1,3 +1,4 @@
+*/.idea/
 /.idea/
 */__pycache__/
 src/cellstitch_cuda/__pycache__/
@@ -10,4 +11,5 @@ data/
 dist/
 figures/
 results/
+dev/
 src/dev/

@@ -1,21 +1,18 @@
 import cupy as cp
+import numpy as np
 from scipy.ndimage import find_objects, binary_fill_holes
 from joblib import Parallel, delayed
 
 
-def process_slice(i, slc, masks, min_size):
+def process_slice(i, slc, masks):
     if slc is not None:
         msk = masks[slc] == (i + 1)
-        npix = msk.sum()
-        if min_size > 0 and npix < min_size:
-            masks[slc][msk] = 0
-        elif npix > 0:
-            if msk.ndim == 3:
-                for k in range(msk.shape[0]):
-                    msk[k] = binary_fill_holes(msk[k])
-            else:
-                msk = binary_fill_holes(msk)
-            return slc, msk
+        if msk.ndim == 3:
+            for k in range(msk.shape[0]):
+                msk[k] = binary_fill_holes(msk[k])
+        else:
+            msk = binary_fill_holes(msk)
+        return slc, msk
     return None
 
 
@@ -51,7 +48,16 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
         )
 
     slices = find_objects(masks)
-    results = Parallel(n_jobs=n_jobs)(delayed(process_slice)(i, slc, masks, min_size) for i, slc in enumerate(slices))
+
+    # Filter small masks
+    for i, slc in enumerate(slices):
+        if slc is not None:
+            msk = masks[slc] == (i + 1)
+            npix = msk.sum()
+            if min_size > 0 and npix < min_size:
+                masks[slc][msk] = 0
+
+    results = Parallel(n_jobs=n_jobs)(delayed(process_slice)(i, slc, masks) for i, slc in enumerate(slices))
 
     j = 0
     for result in results:
