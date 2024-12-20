@@ -8,8 +8,7 @@ def process_slice(i, slc, masks):
     if slc is not None:
         msk = masks[slc] == (i + 1)
         if msk.ndim == 3:
-            for k in range(msk.shape[0]):
-                msk[k] = binary_fill_holes(msk[k])
+            msk = [cupy_binary_fill_holes(msk[k]) for k in range(msk.shape[0])]
         else:
             msk = binary_fill_holes(msk)
         return slc, msk
@@ -47,15 +46,13 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
             "masks_to_outlines takes 2D or 3D array, not %dD array" % masks.ndim
         )
 
-    slices = find_objects(masks)
-
     # Filter small masks
-    for i, slc in enumerate(slices):
-        if slc is not None:
-            msk = masks[slc] == (i + 1)
-            npix = msk.sum()
-            if min_size > 0 and npix < min_size:
-                masks[slc][msk] = 0
+    if min_size > 0:
+        counts = np.bincount(masks.ravel())
+        filter = np.isin(masks, np.where(counts < min_size)[0])
+        masks[filter] = 0
+
+    slices = find_objects(masks)
 
     results = Parallel(n_jobs=n_jobs)(delayed(process_slice)(i, slc, masks) for i, slc in enumerate(slices))
 
