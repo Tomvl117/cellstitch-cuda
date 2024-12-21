@@ -6,7 +6,7 @@ import time
 from cupyx.scipy.ndimage import zoom
 
 
-def crop_downscale_mask(masks, pixel=None, z_res=None):
+def downscale_mask(masks, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
     if not z_res:
@@ -24,7 +24,7 @@ def crop_downscale_mask(masks, pixel=None, z_res=None):
     return masks
 
 
-def upscale_pad_img(images, pixel=None, z_res=None):
+def upscale_img(images, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
     if not z_res:

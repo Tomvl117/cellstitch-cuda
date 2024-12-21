@@ -327,7 +327,7 @@ def cellstitch_cuda(
         if normalise:
             transposed_img = normalize_img(transposed_img)
             cp._default_memory_pool.free_all_blocks()
-        transposed_img = upscale_pad_img(
+        transposed_img = upscale_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess YZ planes
         cp._default_memory_pool.free_all_blocks()
@@ -335,7 +335,7 @@ def cellstitch_cuda(
         del transposed_img
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
-        yz_masks = crop_downscale_mask(
+        yz_masks = downscale_mask(
             yz_masks, pixel_size, z_step
         ).transpose(
             1, 0, 2
@@ -351,14 +351,14 @@ def cellstitch_cuda(
         if normalise:
             transposed_img = normalize_img(transposed_img)
             cp._default_memory_pool.free_all_blocks()
-        transposed_img = upscale_pad_img(
+        transposed_img = upscale_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess XZ planes
         cp._default_memory_pool.free_all_blocks()
         xz_masks = segmentation(transposed_img, model, seg_mode)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
-        xz_masks = crop_downscale_mask(
+        xz_masks = downscale_mask(
             xz_masks, pixel_size, z_step
         ).transpose(
             1, 2, 0
