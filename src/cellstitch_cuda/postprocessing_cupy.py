@@ -66,26 +66,25 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
 
 
 def filter_nuclei_cells(volumetric_masks, nuclei_masks):
-    # Initialize new label ID
-    new_label_id = 0
 
-    nuclei_masks = cp.asarray(nuclei_masks)
+    # Convert nuclei masks to a boolean array to make the later comparison easier
+    nuclei_masks = cp.asarray(nuclei_masks.astype(bool))
     volumetric_masks = cp.asarray(volumetric_masks)
 
     nuclear_cells = cp.zeros_like(volumetric_masks)
 
-    unique_labels = cp.unique(nuclei_masks)
+    unique_labels = cp.unique(volumetric_masks)
+
+    # Initialize new label ID
+    new_label_id = 1
     for label_id in unique_labels[unique_labels != 0]:
-        # Find the coordinates of the current label in the nuclei layer
-        coords = cp.argwhere(nuclei_masks == label_id)
 
-        # Check if any of these coordinates are also labeled in the cell layer
-        cell_ids = volumetric_masks[coords[:, 0], coords[:, 1], coords[:, 2]]
-        colocalized_cells = cell_ids[cell_ids != 0]
+        # Create a boolean mask for each label ID
+        mask = (volumetric_masks == label_id)
 
-        if colocalized_cells.size > 0:
-            cell_id = colocalized_cells[0]
-            nuclear_cells[volumetric_masks == cell_id] = new_label_id
+        # If there is any overlap between the mask and the known nuclei
+        if cp.any(mask & nuclei_masks):
+            nuclear_cells[mask] = new_label_id  # Assign new label ID
             new_label_id += 1
 
     return nuclear_cells.get()
