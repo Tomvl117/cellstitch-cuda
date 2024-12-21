@@ -150,10 +150,13 @@ def _label_overlap_cupy(x, y):
 
         Returns:
             overlap (np.ndarray, int): Matrix of pixel overlaps of size [x.max()+1, y.max()+1].
+
+        Adapted from CellPose: https://github.com/MouseLand/cellpose
+            https://doi.org/10.1038/s41592-020-01018-x: Stringer, C., Wang, T., Michaelos, M., & Pachitariu, M. (2021).
+            Cellpose: a generalist algorithm for cellular segmentation. Nature methods, 18(1), 100-106.
+            Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
         """
     # put label arrays into standard form then flatten them
-    #     x = (utils.format_labels(x)).ravel()
-    #     y = (utils.format_labels(y)).ravel()
     x = cp.asarray(x.ravel())
     y = cp.asarray(y.ravel())
     xmax = int(x.max())
