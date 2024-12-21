@@ -51,7 +51,7 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = True, debug=False, verbose=False):
+def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = True, n_jobs=-1, verbose=False):
     """Stitch masks in-place
 
     Stitches masks from top to bottom.
@@ -62,12 +62,9 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
         xz_masks: numpy.ndarray with XZ masks
         nuclei: numpy.ndarray with XY masks of nuclei
         filter: Use CellPose-based fill_holes_and_remove_small_masks() function. Default True
-        debug: Set n_jobs to 1 for parallel processing tasks. Default False
+        n_jobs: Number of threads used. Set n_jobs to 1 for debugging parallel processing tasks. Default -1
         verbose: Verbosity. Default False
     """
-    n_jobs = -1  # Use all cores by default
-    if debug:
-        n_jobs = 1
 
     xy_masks = np.array(xy_masks_prior, dtype="uint32")
     num_frame = xy_masks.shape[0]
@@ -157,6 +154,7 @@ def cellstitch_cuda(
     z_step=None,
     bleach_correct: bool = True,
     filtering: bool = True,
+    n_jobs: int = -1,
     verbose: bool = False,
 ):
     """All-in-one function to segment and stitch 2D labels
@@ -188,6 +186,9 @@ def cellstitch_cuda(
         filtering: Whether the fill_holes_and_remove_small_masks function should be executed. With larger datasets, this
             has the tendency to massively slow down the postprocessing.
             Default True
+        n_jobs: Set the number of threads to be used in parallel processing tasks. Use 1 for debugging. Generally, best
+            left at the default value.
+            Default -1
         verbose: Verbosity.
             Default False
     """
@@ -368,7 +369,7 @@ def cellstitch_cuda(
             )
         else:
             cellstitch_masks = full_stitch(
-                yx_masks, yz_masks, xz_masks, filter=filtering, verbose=verbose
+                yx_masks, yz_masks, xz_masks, filter=filtering, n_jobs=n_jobs, verbose=verbose
             )
 
         if output_masks:
