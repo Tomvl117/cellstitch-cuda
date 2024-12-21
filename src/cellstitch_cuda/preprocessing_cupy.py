@@ -157,7 +157,7 @@ def segment_single_slice_small(d, model, pixel=None):
     return res[0]
 
 
-def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False):
+def segmentation(d, model, pixel=None, m: str = "nuclei_cells", normalise: bool = True, xy: bool = False):
     empty_res = np.zeros_like(d[0])
 
     mode = 1  # Base for 'nuclei_cells' and 'cells'
@@ -171,10 +171,11 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False
 
     nslices = d.shape[-1]
 
-    d = normalize_img(d)  # Pre-normalize data
-    cp._default_memory_pool.free_all_blocks()
+    if normalise:
+        d = normalize_img(d)  # Pre-normalize data
+        cp._default_memory_pool.free_all_blocks()
 
-    time.sleep(3)  # Wait for VRAM cache to clear
+        time.sleep(3)  # Wait for VRAM cache to clear
 
     vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
     vram_est = 0.1765 * np.prod(d.shape[0:3])  # Magic number literally obtained by plotting in Excel

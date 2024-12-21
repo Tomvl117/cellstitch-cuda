@@ -148,6 +148,7 @@ def cellstitch_cuda(
     output_path=None,
     stitch_method: str = "cellstitch",
     seg_mode: str = "nuclei_cells",
+    normalise: bool = True,
     pixel_size=None,
     z_step=None,
     bleach_correct: bool = True,
@@ -175,6 +176,8 @@ def cellstitch_cuda(
         seg_mode: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
             masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
             Default "nuclei_cells"
+        normalise: Whether to perform normalisation prior to InstanSeg-based segmentation. It is performed over the
+            entire stack (per channel) to save time, but it can still take a while. Default True
         pixel_size: XY pixel size in microns per pixel. When set to None, will be read from img metadata if possible.
             Default None
         z_step: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
@@ -268,9 +271,9 @@ def cellstitch_cuda(
     # Segment over Z-axis
     if verbose:
         print("Segmenting YX planes (Z-axis).")
-    if seg_mode == "nuclei_cells":
-        yx_masks = segmentation(img, model, pixel_size, seg_mode, xy=True)
 
+    yx_masks = segmentation(img, model, pixel_size, seg_mode, normalise=normalise, xy=True)
+    if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(
             2, 0, 1
         )  # YXZ -> ZYX
@@ -281,7 +284,7 @@ def cellstitch_cuda(
         if output_masks:
             tifffile.imwrite(os.path.join(output_path, "nuclei_masks.tif"), nuclei)
     else:
-        yx_masks = segmentation(img, model, pixel_size, seg_mode, xy=True).transpose(
+        yx_masks = yx_masks.transpose(
             2, 0, 1
         )  # YXZ -> ZYX
 
@@ -321,7 +324,7 @@ def cellstitch_cuda(
             transposed_img, pixel_size, z_step
         )  # Preprocess YZ planes
         cp._default_memory_pool.free_all_blocks()
-        yz_masks = segmentation(transposed_img, model, pixel_size, seg_mode)
+        yz_masks = segmentation(transposed_img, model, pixel_size, seg_mode, normalise=normalise)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
         yz_masks = crop_downscale_mask(
@@ -341,7 +344,7 @@ def cellstitch_cuda(
             transposed_img, pixel_size, z_step
         )  # Preprocess XZ planes
         cp._default_memory_pool.free_all_blocks()
-        xz_masks = segmentation(transposed_img, model, pixel_size, seg_mode)
+        xz_masks = segmentation(transposed_img, model, pixel_size, seg_mode, normalise=normalise)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
         xz_masks = crop_downscale_mask(

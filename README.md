@@ -80,6 +80,8 @@ volumetric_masks = full_stitch(yx_masks, yz_masks, xz_masks)
 * **seg_mode**: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
     masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
     Default "nuclei_cells"
+* **normalise**: Whether to perform normalisation prior to InstanSeg-based segmentation. It is performed over the
+    entire stack (per channel) to save time, but it can still take a while. Default True
 * **pixel_size**: XY pixel size in microns per pixel. When set to None, will be read from img metadata if possible.
     Default None
 * **z_step**: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
