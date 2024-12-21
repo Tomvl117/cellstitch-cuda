@@ -42,23 +42,68 @@ pip uninstall cupy-cuda12x
 pip install cupy-cuda11x
 ```
 ## Instructions
-### From an image
+### Example code
+For more detail, see `examples/`.
+#### From an image
+This assumes a multichannel grayscale image in the order ZCYX. Single-channel images are currently not supported, but will be in the future.
 ```python
 from cellstitch_cuda.pipeline import cellstitch_cuda
 
-img = "path/to/image.tif"
+img = "path/to/image.tif"  # ZCYX
 # or feed img as a numpy ndarray
 
 volumetric_masks = cellstitch_cuda(img)
 ```
-### From pre-existing orthogonal labels
+#### From pre-existing orthogonal labels
+These are label images over the Z-, X, and Y-axis. They are assumed to be in the order ZYX. If you set `output_masks=True` in the `cellstitch_cuda()`-function, these masks will be written to disk (either in the input folder, or in the folder set in `output_path`).
 ```python
 from cellstitch_cuda.pipeline import full_stitch
+import tifffile
 
-# Define xy_masks, yz_masks, xz_masks in some way
+# Define xy_masks, yz_masks, xz_masks
+yx_masks = tifffile.imread("path/to/yx_masks.tif")  # ZYX
+yz_masks = tifffile.imread("path/to/yz_masks.tif")  # ZYX
+xz_masks = tifffile.imread("path/to/xz_masks.tif")  # ZYX
 
-volumetric_masks = full_stitch(xy_masks, yz_masks, xz_masks)
+volumetric_masks = full_stitch(yx_masks, yz_masks, xz_masks)
 ```
+### Arguments
+#### cellstitch_cuda.pipeline.cellstitch_cuda()
+`cellstitch_cuda()` takes the following arguments:
+* **img**: Either a path pointing to an existing image, or a numpy.ndarray. Must be 4D (ZCYX).
+* **output_masks**: True to write all masks to the output path, or False to only return the final stitched mask.
+    Default False
+* **output_path**: Set to None to write to the input file location (if provided). Ignored of output_masks is False.
+    Default None
+* **stitch_method**: "iou" for Cellpose IoU stitching, or "cellstitch" for CellStitch stitching.
+    Default "cellstitch"
+* **seg_mode**: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
+    masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
+    Default "nuclei_cells"
+* **pixel_size**: XY pixel size in microns per pixel. When set to None, will be read from img metadata if possible.
+    Default None
+* **z_step**: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
+    Default None
+* **bleach_correct**: Whether histogram-based signal degradation correction should be applied to img.
+    Default True
+* **filtering**: Whether the fill_holes_and_remove_small_masks function should be executed. With larger datasets, this
+    has the tendency to massively slow down the postprocessing.
+    Default True
+* **n_jobs**: Set the number of threads to be used in parallel processing tasks. Use 1 for debugging. Generally, best
+    left at the default value.
+    Default -1
+* **verbose**: Verbosity.
+    Default False
+#### cellstitch_cuda.pipeline.full_stitch()
+`full_stitch()` takes the following arguments:
+* **xy_masks_prior**: numpy.ndarray with XY masks, order ZYX
+* **yz_masks**: numpy.ndarray with YZ masks, order ZYX
+* **xz_masks**: numpy.ndarray with XZ masks, order ZYX
+* **nuclei**: numpy.ndarray with XY masks of nuclei, order ZYX. If provided, it will run the function `filter_nuclei_cells()` to filter volumetric masks by the presence of a 2D nucleus mask. Default None
+* **filter**: Use CellPose-based fill_holes_and_remove_small_masks() function. Default True
+* **n_jobs**: Number of threads used. Set n_jobs to 1 for debugging parallel processing tasks. Default -1
+* **verbose**: Verbosity. Default False
+
 
 ## References
 Goldsborough, T., O’Callaghan, A., Inglis, F., Leplat, L., Filbey, A., Bilen, H., & Bankhead, P. (2024) A novel channel invariant architecture for the segmentation of cells and nuclei in multiplexed images using InstanSeg. bioRxiv, 2024.09.04.611150. doi: [10.1101/2024.09.04.611150](https://doi.org/10.1101/2024.09.04.611150)
