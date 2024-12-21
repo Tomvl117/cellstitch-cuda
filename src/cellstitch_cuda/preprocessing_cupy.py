@@ -6,14 +6,12 @@ import time
 from cupyx.scipy.ndimage import zoom
 
 
-def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
+def crop_downscale_mask(masks, pixel=None, z_res=None):
     if not pixel:
         pixel = 1
     if not z_res:
         z_res = 1
 
-    if pad != 0:
-        masks = masks[:, pad:-pad, :]  # iZk
     masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
@@ -42,20 +40,9 @@ def upscale_pad_img(images, pixel=None, z_res=None):
         cp._default_memory_pool.free_all_blocks()
         zoomed.append(ch)
 
-    images = np.stack(zoomed)
     cp._default_memory_pool.free_all_blocks()
 
-    padding_width = 0
-
-    if images.shape[-2] < 300:
-        padding_width = (300 - images.shape[-2]) // 2
-        images = np.pad(
-            images,
-            ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
-            constant_values=0,
-        )
-
-    return images, padding_width
+    return np.stack(zoomed)
 
 
 def histogram_correct(images, match: str = "first"):
@@ -157,7 +144,7 @@ def segment_single_slice_small(d, model):
     return res[0]
 
 
-def segmentation(d, model, m: str = "nuclei_cells", normalise: bool = True, xy: bool = False):
+def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     empty_res = np.zeros_like(d[0])
 
     mode = 1  # Base for 'nuclei_cells' and 'cells'
@@ -170,12 +157,6 @@ def segmentation(d, model, m: str = "nuclei_cells", normalise: bool = True, xy: 
         nuclei_cells = True
 
     nslices = d.shape[-1]
-
-    if normalise:
-        d = normalize_img(d)  # Pre-normalize data
-        cp._default_memory_pool.free_all_blocks()
-
-        time.sleep(3)  # Wait for VRAM cache to clear
 
     vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
     vram_est = 0.1765 * np.prod(d.shape[0:3])  # Magic number literally obtained by plotting in Excel
@@ -222,8 +203,8 @@ def normalize_img(img, percentile=0.1, epsilon: float = 1e-3):
     """
     normalized = []
     for ch in img:
-        ch = _normalize(cp.asarray(ch), percentile, epsilon)
         cp._default_memory_pool.free_all_blocks()
+        ch = _normalize(cp.asarray(ch), percentile, epsilon)
         normalized.append(ch)
 
     img = np.stack(normalized)

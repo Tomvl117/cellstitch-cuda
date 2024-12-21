@@ -272,7 +272,11 @@ def cellstitch_cuda(
     if verbose:
         print("Segmenting YX planes (Z-axis).")
 
-    yx_masks = segmentation(img, model, seg_mode, normalise=normalise, xy=True)
+    if normalise:
+        yx_masks = segmentation(normalize_img(img), model, seg_mode, xy=True)
+    else:
+        yx_masks = segmentation(img, model, seg_mode, xy=True)
+    cp._default_memory_pool.free_all_blocks()
     if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(
             2, 0, 1
@@ -320,16 +324,19 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting YZ planes (X-axis).")
         transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-        transposed_img, padding = upscale_pad_img(
+        if normalise:
+            transposed_img = normalize_img(transposed_img)
+            cp._default_memory_pool.free_all_blocks()
+        transposed_img = upscale_pad_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess YZ planes
         cp._default_memory_pool.free_all_blocks()
-        yz_masks = segmentation(transposed_img, model, seg_mode, normalise=normalise)
+        yz_masks = segmentation(transposed_img, model, seg_mode)
         del transposed_img
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
         yz_masks = crop_downscale_mask(
-            yz_masks, padding, pixel_size, z_step
+            yz_masks, pixel_size, z_step
         ).transpose(
             1, 0, 2
         )  # YZX -> ZYX
@@ -341,15 +348,18 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting XZ planes (Y-axis).")
         transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-        transposed_img, padding = upscale_pad_img(
+        if normalise:
+            transposed_img = normalize_img(transposed_img)
+            cp._default_memory_pool.free_all_blocks()
+        transposed_img = upscale_pad_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess XZ planes
         cp._default_memory_pool.free_all_blocks()
-        xz_masks = segmentation(transposed_img, model, seg_mode, normalise=normalise)
+        xz_masks = segmentation(transposed_img, model, seg_mode)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache
         xz_masks = crop_downscale_mask(
-            xz_masks, padding, pixel_size, z_step
+            xz_masks, pixel_size, z_step
         ).transpose(
             1, 2, 0
         )  # XZY -> ZYX
