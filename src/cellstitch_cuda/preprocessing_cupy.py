@@ -17,7 +17,7 @@ def crop_downscale_mask(masks, pad: int = 0, pixel=None, z_res=None):
     masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, 1 / anisotropy, 1)
+    zoom_factors = (1/(pixel/0.5), 1 / (anisotropy*(pixel/0.5)), 1)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     masks = zoom(masks, zoom_factors, order=order).get()
@@ -33,11 +33,11 @@ def upscale_pad_img(images, pixel=None, z_res=None):
         z_res = 1
 
     anisotropy = z_res / pixel
-    zoom_factors = (1, anisotropy, 1)
+    zoom_factors = (pixel/0.5, anisotropy*(pixel/0.5), 1)  # Pre-zoom for InstanSeg (expected pixel size = 0.5)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     zoomed = []
-    for ch in images:
+    for ch in images:  # CiZk
         ch = zoom(cp.asarray(ch), zoom_factors, order=order).get()
         cp._default_memory_pool.free_all_blocks()
         zoomed.append(ch)
@@ -47,8 +47,8 @@ def upscale_pad_img(images, pixel=None, z_res=None):
 
     padding_width = 0
 
-    if images.shape[-2] < 512:
-        padding_width = (512 - images.shape[-2]) // 2
+    if images.shape[-2] < 300:
+        padding_width = (300 - images.shape[-2]) // 2
         images = np.pad(
             images,
             ((0, 0), (0, 0), (padding_width, padding_width), (0, 0)),
@@ -132,11 +132,11 @@ def _correct(channel, match):
 
 
 def segment_single_slice_medium(
-    d, model, tiles, batch_size, pixel=None, m: str = "nuclei_cells"
+    d, model, tiles, batch_size,
 ):
     res, image_tensor = model.eval_medium_image(
         d,
-        pixel,
+        pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
         tile_size=tiles,
@@ -146,10 +146,10 @@ def segment_single_slice_medium(
     return res[0]
 
 
-def segment_single_slice_small(d, model, pixel=None):
+def segment_single_slice_small(d, model):
     res, image_tensor = model.eval_small_image(
         d,
-        pixel,
+        pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
         normalise=False,  # We already have normalized our data beforehand
@@ -157,7 +157,7 @@ def segment_single_slice_small(d, model, pixel=None):
     return res[0]
 
 
-def segmentation(d, model, pixel=None, m: str = "nuclei_cells", normalise: bool = True, xy: bool = False):
+def segmentation(d, model, m: str = "nuclei_cells", normalise: bool = True, xy: bool = False):
     empty_res = np.zeros_like(d[0])
 
     mode = 1  # Base for 'nuclei_cells' and 'cells'
@@ -198,13 +198,13 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", normalise: bool 
 
     if small:  # For images that fit within VRAM in their entirety
         for xyz in range(nslices):
-            res_slice = segment_single_slice_small(d[:, :, :, xyz], model, pixel)
+            res_slice = segment_single_slice_small(d[:, :, :, xyz], model)
             empty_res[:, :, xyz] = res_slice[mode]
             if nuclei_cells:
                 nuclei[:, :, xyz] = res_slice[0]
     else:  # For larger images
         for xyz in range(nslices):
-            res_slice = segment_single_slice_medium(d[:, :, :, xyz], model, tiles, batch, pixel)
+            res_slice = segment_single_slice_medium(d[:, :, :, xyz], model, tiles, batch)
             empty_res[:, :, xyz] = res_slice[mode]
             if nuclei_cells:
                 nuclei[:, :, xyz] = res_slice[0]
