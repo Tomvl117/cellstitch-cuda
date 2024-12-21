@@ -92,14 +92,12 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
             yz_not_stitched = cp.asarray(
                 (yz_masks[prev_index] != 0)
                 * (yz_masks[curr_index] != 0)
-                * (yz_masks[prev_index] != yz_masks[curr_index]),
-                dtype="uint32"
+                * (yz_masks[prev_index] != yz_masks[curr_index])
             )
             xz_not_stitched = cp.asarray(
                 (xz_masks[prev_index] != 0)
                 * (xz_masks[curr_index] != 0)
-                * (xz_masks[prev_index] != xz_masks[curr_index]),
-                dtype="uint32"
+                * (xz_masks[prev_index] != xz_masks[curr_index])
             )
 
             fp = FramePair(
