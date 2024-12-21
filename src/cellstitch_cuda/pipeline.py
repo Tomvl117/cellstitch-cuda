@@ -1,6 +1,5 @@
 import tifffile
 import os
-import sys
 from instanseg import InstanSeg
 from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
@@ -144,6 +143,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
 
     if verbose:
         print("Time to correct oversegmentation: ", time.time() - time_start)
+
     return xy_masks
 
 
@@ -362,7 +362,7 @@ def cellstitch_cuda(
         if verbose:
             print("Running CellStitch stitching...")
 
-        if seg_mode == "nuclei_masks":
+        if seg_mode == "nuclei_cells":
             cellstitch_masks = full_stitch(
                 yx_masks, yz_masks, xz_masks, nuclei, filter=filtering, verbose=verbose
             )

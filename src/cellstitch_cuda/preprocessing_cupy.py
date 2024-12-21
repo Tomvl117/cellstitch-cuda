@@ -2,6 +2,7 @@ import cupy as cp
 import numpy as np
 import torch
 import sys
+import time
 from cupyx.scipy.ndimage import zoom
 
 
@@ -173,6 +174,8 @@ def segmentation(d, model, pixel=None, m: str = "nuclei_cells", xy: bool = False
     d = normalize_img(d)  # Pre-normalize data
     cp._default_memory_pool.free_all_blocks()
 
+    time.sleep(3)  # Wait for VRAM cache to clear
+
     vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
     vram_est = 0.1765 * np.prod(d.shape[0:3])  # Magic number literally obtained by plotting in Excel
 
@@ -233,4 +236,4 @@ def _normalize(img, percentile, epsilon):
     p_max = cp.percentile(img, 100 - percentile, axis=(0, 1), keepdims=True).astype("float32").get()
     cp._default_memory_pool.free_all_blocks()
     maximum = np.maximum(epsilon, p_max - p_min)
-    return ((img.get() - p_min) / maximum)
+    return (img.get() - p_min) / maximum
