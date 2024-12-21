@@ -58,7 +58,7 @@ class FramePair:
         # compute transportation plan
         plan = ot.emd(dist0, dist1, C)
 
-        return plan
+        return plan, mask1
 
     def get_cost_matrix(self, overlap, lbls0, lbls1):
         """
@@ -95,7 +95,7 @@ class FramePair:
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
-        plan = self.get_plan(C)
+        plan, mask1 = self.get_plan(C)
 
         # get a soft matching from plan
         n, m = plan.shape
@@ -104,8 +104,6 @@ class FramePair:
         # Vectorized computation
         matched_indices = plan.argmax(axis=1)
         soft_matching[cp.arange(n), matched_indices] = 1
-
-        mask1 = cp.asarray(self.frame1.mask)
 
         stitched_mask1 = cp.zeros(mask1.shape)
         for lbl1_index in range(1, m):
