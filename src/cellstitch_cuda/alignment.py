@@ -1,4 +1,5 @@
 import ot
+import cupyx
 from skimage import color
 import matplotlib.pyplot as plt
 from cellpose.metrics import _label_overlap
@@ -86,11 +87,11 @@ class FramePair:
 
         time_start = time.time()
 
-        lbls0 = self.frame0.get_lbls()
-        lbls1 = self.frame1.get_lbls()
+        lbls0 = self.frame0.get_lbls()  # Get unique label IDs
+        lbls1 = self.frame1.get_lbls()  # Get unique label IDs
 
         # get sizes
-        overlap = cp.asarray(_label_overlap(self.frame0.mask, self.frame1.mask))
+        overlap = _label_overlap_cupy(self.frame0.mask, self.frame1.mask)
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
@@ -104,7 +105,7 @@ class FramePair:
         matched_indices = plan.argmax(axis=1)
         soft_matching[cp.arange(n), matched_indices] = 1
 
-        mask0, mask1 = cp.asarray(self.frame0.mask), cp.asarray(self.frame1.mask)
+        mask1 = cp.asarray(self.frame1.mask)
 
         stitched_mask1 = cp.zeros(mask1.shape)
         for lbl1_index in range(1, m):
@@ -138,3 +139,29 @@ class FramePair:
             print("Time to stitch: ", time.time() - time_start)
 
         self.frame1 = Frame(stitched_mask1)
+
+
+def _label_overlap_cupy(x, y):
+    """Fast function to get pixel overlaps between masks in x and y.
+
+        Args:
+            x (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
+            y (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
+
+        Returns:
+            overlap (np.ndarray, int): Matrix of pixel overlaps of size [x.max()+1, y.max()+1].
+        """
+    # put label arrays into standard form then flatten them
+    #     x = (utils.format_labels(x)).ravel()
+    #     y = (utils.format_labels(y)).ravel()
+    x = cp.asarray(x.ravel())
+    y = cp.asarray(y.ravel())
+    xmax = int(x.max())
+    ymax = int(y.max())
+
+    # preallocate a "contact map" matrix
+    overlap = cp.zeros((1 + xmax, 1 + ymax), dtype=cp.uint)
+
+    cupyx.scatter_add(overlap, (x, y), 1)
+
+    return overlap
