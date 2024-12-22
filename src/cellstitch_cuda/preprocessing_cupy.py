@@ -156,9 +156,9 @@ def segment_batch_slice_small(d, model):
             instanseg_kwargs = {"cleanup_fragments": True}
             instances = model.instanseg(batch, target_segmentation=target_segmentation, **instanseg_kwargs)
         res = instances.cpu()
-        result.append(res)
-
-    result = np.array(result)[0].astype("uint32").transpose(1, 2, 3, 0)  # ZcYX --> cYXZ || kcij --> cijk
+        result.append(res.numpy().astype("uint32"))
+    result = [k for b in result for k in b]  # For each z plane found in each batch b in result, stack the z planes
+    result = np.stack(result).transpose(1, 2, 3, 0)  # ZcYX --> cYXZ || kcij --> cijk (for iterator k)
 
     return result[1], result[0]
 
@@ -201,7 +201,7 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
             dataset = ImageDataset(d)
             dataloader = DataLoader(dataset, batch_size=batch-1, shuffle=False, drop_last=False)
             empty_res, nuclei = segment_batch_slice_small(dataloader, model)
-        else:
+        else:  # If only 1 or 2 z planes fit into VRAM, go z by z (or whichever iterating image axis is last)
             empty_res = np.zeros_like(d[0])
             nuclei = empty_res.copy()
             for xyz in range(nslices):
@@ -223,7 +223,7 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
 
 
 def normalize_img(img, percentile=0.1, epsilon: float = 1e-3):
-    """"
+    """
     Normalize all planes of a given axis (in this case, the last axis). The image is split into channels to relieve GPU
     strain.
 
