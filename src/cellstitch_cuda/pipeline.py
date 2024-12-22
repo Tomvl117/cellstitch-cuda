@@ -1,7 +1,8 @@
 import tifffile
 import os
+
+from cellstitch_cuda.alignment import _label_overlap_cupy
 from instanseg import InstanSeg
-from cellpose.metrics import _label_overlap
 from cellpose.utils import stitch3D
 from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks, filter_nuclei_cells
 
@@ -19,7 +20,7 @@ def relabel_layer(masks, z, lbls):
     else:
         reference_layer = masks[z + 1]
 
-    overlap = cp.asarray(_label_overlap(reference_layer.get(), layer.get()))
+    overlap = _label_overlap_cupy(reference_layer, layer)
 
     for lbl in lbls:
         lbl0 = cp.argmax(overlap[:, lbl])
