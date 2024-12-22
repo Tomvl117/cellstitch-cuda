@@ -11,6 +11,9 @@ class ImageDataset(Dataset):
         return len(self.image_list)
 
     def __getitem__(self, idx):
+        epsilon: float = 1e-3
+        percentile = 0.1
+
         image = self.image_list[idx]
         if isinstance(image, np.ndarray):
             if image.dtype == np.uint16:
@@ -20,4 +23,11 @@ class ImageDataset(Dataset):
         image = image.squeeze()
 
         image = torch.atleast_3d(image)
+
+        for c in range(image.shape[0]):
+            if image.is_cuda or image.is_mps:
+                (p_min, p_max) = torch.quantile(image, torch.tensor([percentile / 100, (100 - percentile) / 100], device = image.device))
+            else:
+                (p_min, p_max) = np.percentile(image.cpu(), [percentile, 100 - percentile])
+            image[c] = (image[c] - p_min) / max(epsilon, p_max - p_min)
         return image
