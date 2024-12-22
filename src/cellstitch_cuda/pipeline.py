@@ -148,7 +148,6 @@ def cellstitch_cuda(
     output_path=None,
     stitch_method: str = "cellstitch",
     seg_mode: str = "nuclei_cells",
-    normalise: bool = True,
     pixel_size=None,
     z_step=None,
     bleach_correct: bool = True,
@@ -176,8 +175,6 @@ def cellstitch_cuda(
         seg_mode: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
             masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
             Default "nuclei_cells"
-        normalise: Whether to perform normalisation prior to InstanSeg-based segmentation. It is performed over the
-            entire stack (per channel) to save time, but it can still take a while. Default True
         pixel_size: XY pixel size in microns per pixel. When set to None, will be read from img metadata if possible.
             Default None
         z_step: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
@@ -272,11 +269,7 @@ def cellstitch_cuda(
     if verbose:
         print("Segmenting YX planes (Z-axis).")
 
-    if normalise:
-        yx_masks = segmentation(normalize_img(img), model, seg_mode, xy=True)
-    else:
-        yx_masks = segmentation(img, model, seg_mode, xy=True)
-    cp._default_memory_pool.free_all_blocks()
+    yx_masks = segmentation(img, model, seg_mode, xy=True)
     if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(
             2, 0, 1
@@ -324,9 +317,6 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting YZ planes (X-axis).")
         transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-        if normalise:
-            transposed_img = normalize_img(transposed_img)
-            cp._default_memory_pool.free_all_blocks()
         transposed_img = upscale_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess YZ planes
@@ -348,9 +338,6 @@ def cellstitch_cuda(
         if verbose:
             print("Segmenting XZ planes (Y-axis).")
         transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-        if normalise:
-            transposed_img = normalize_img(transposed_img)
-            cp._default_memory_pool.free_all_blocks()
         transposed_img = upscale_img(
             transposed_img, pixel_size, z_step
         )  # Preprocess XZ planes

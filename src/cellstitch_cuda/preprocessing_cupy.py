@@ -220,30 +220,3 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     if nuclei_cells:
         return empty_res, nuclei
     return empty_res
-
-
-def normalize_img(img, percentile=0.1, epsilon: float = 1e-3):
-    """
-    Normalize all planes of a given axis (in this case, the last axis). The image is split into channels to relieve GPU
-    strain.
-
-    Adapted from Instanseg (instanseg.utils.utils.percentile_normalize()).
-    """
-    normalized = []
-    for ch in img:
-        cp._default_memory_pool.free_all_blocks()
-        ch = _normalize(cp.asarray(ch), percentile, epsilon)
-        normalized.append(ch)
-
-    img = np.stack(normalized)
-
-    return img
-
-
-def _normalize(img, percentile, epsilon):
-    p_min = cp.percentile(img, percentile, axis=(0, 1), keepdims=True).astype("float32").get()
-    cp._default_memory_pool.free_all_blocks()
-    p_max = cp.percentile(img, 100 - percentile, axis=(0, 1), keepdims=True).astype("float32").get()
-    cp._default_memory_pool.free_all_blocks()
-    maximum = np.maximum(epsilon, p_max - p_min)
-    return (img.get() - p_min) / maximum
