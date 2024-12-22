@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cellstitch-cuda"
-version = "1.2.0"
+version = "1.2.1"
 description = "CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation."
 readme = "README.md"
 authors = [{name = "Tom van Leeuwen", email = "tom@tleeuwen.nl"}]
@@ -36,7 +36,7 @@ line-length = 88
 target-version = ['py39', 'py310', 'py311']
 
 [tool.bumpver]
-current_version = "1.2.0"
+current_version = "1.2.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
