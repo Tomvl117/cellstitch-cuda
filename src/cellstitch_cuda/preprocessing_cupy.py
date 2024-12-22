@@ -1,8 +1,9 @@
 import cupy as cp
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
+from cellstitch_cuda.seg_batch import ImageDataset
 import sys
-import time
 from cupyx.scipy.ndimage import zoom
 
 
@@ -121,8 +122,9 @@ def _correct(channel, match):
 def segment_single_slice_medium(
     d, model, tiles, batch_size,
 ):
-    res, image_tensor = model.eval_medium_image(
+    res = model.eval_medium_image(
         d,
+        return_image_tensor=False,
         pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
@@ -134,8 +136,9 @@ def segment_single_slice_medium(
 
 
 def segment_single_slice_small(d, model):
-    res, image_tensor = model.eval_small_image(
+    res = model.eval_small_image(
         d,
+        return_image_tensor=False,
         pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
@@ -144,8 +147,23 @@ def segment_single_slice_small(d, model):
     return res[0]
 
 
+def segment_batch_slice_small(d, model):
+    result = []
+    for batch in d:
+        batch = batch.to(model.inference_device)
+        target_segmentation = torch.tensor([1, 1])
+        with torch.amp.autocast('cuda'):
+            instanseg_kwargs = {"cleanup_fragments": True}
+            instances = model.instanseg(batch, target_segmentation=target_segmentation, **instanseg_kwargs)
+        res = instances.cpu()
+        result.append(res)
+
+    result = np.array(result)[0].astype("uint32").transpose(1, 2, 3, 0)  # ZcYX --> cYXZ || kcij --> cijk
+
+    return result[1], result[0]
+
+
 def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
-    empty_res = np.zeros_like(d[0])
 
     mode = 1  # Base for 'nuclei_cells' and 'cells'
     if m == "nuclei":
@@ -153,7 +171,6 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
 
     nuclei_cells = False
     if xy and m == "nuclei_cells":
-        nuclei = empty_res.copy()
         nuclei_cells = True
 
     nslices = d.shape[-1]
@@ -177,13 +194,24 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     else:
         small = True
 
-    if small:  # For images that fit within VRAM in their entirety
-        for xyz in range(nslices):
-            res_slice = segment_single_slice_small(d[:, :, :, xyz], model)
-            empty_res[:, :, xyz] = res_slice[mode]
-            if nuclei_cells:
-                nuclei[:, :, xyz] = res_slice[0]
+    if small:  # For images that fit within VRAM in their entirety:
+        batch = int(vram/vram_est)
+        if batch > 2:
+            d = d.transpose(3, 0, 1, 2)  # CYXZ --> ZCYX || Cijk --> kCij
+            dataset = ImageDataset(d)
+            dataloader = DataLoader(dataset, batch_size=batch-1, shuffle=False, drop_last=False)
+            empty_res, nuclei = segment_batch_slice_small(dataloader, model)
+        else:
+            empty_res = np.zeros_like(d[0])
+            nuclei = empty_res.copy()
+            for xyz in range(nslices):
+                res_slice = segment_single_slice_small(d[:, :, :, xyz], model)
+                empty_res[:, :, xyz] = res_slice[mode]
+                if nuclei_cells:
+                    nuclei[:, :, xyz] = res_slice[0]
     else:  # For larger images
+        empty_res = np.zeros_like(d[0])
+        nuclei = empty_res.copy()
         for xyz in range(nslices):
             res_slice = segment_single_slice_medium(d[:, :, :, xyz], model, tiles, batch)
             empty_res[:, :, xyz] = res_slice[mode]
