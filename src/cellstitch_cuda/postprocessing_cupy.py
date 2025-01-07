@@ -57,12 +57,13 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
     results = Parallel(n_jobs=n_jobs)(delayed(process_slice)(i, slc, masks) for i, slc in enumerate(slices))
 
     j = 0
+    filtered_mask = np.zeros_like(masks)
     for result in results:
         if result is not None:
             slc, msk = result
-            masks[slc][msk] = (j + 1)
+            filtered_mask[slc][msk] = (j + 1)
             j += 1
-    return masks
+    return filtered_mask
 
 
 def filter_nuclei_cells(volumetric_masks, nuclei_masks):
