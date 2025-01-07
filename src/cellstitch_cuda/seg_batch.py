@@ -14,12 +14,15 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
 
         image = self.image_list[idx]
+
         if isinstance(image, np.ndarray):
             if image.dtype == np.uint16:
                 image = image.astype(np.int32)
             image = torch.from_numpy(image).float()
 
         image = image.squeeze()
+
+        assert 3 >= image.dim() >= 2, f"Input image shape {image.shape} is not supported."
 
         image = torch.atleast_3d(image)
 
