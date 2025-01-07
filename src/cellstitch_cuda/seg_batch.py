@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import torch
 import numpy as np
+from instanseg.utils.utils import percentile_normalize
 
 
 class ImageDataset(Dataset):
@@ -11,8 +12,6 @@ class ImageDataset(Dataset):
         return len(self.image_list)
 
     def __getitem__(self, idx):
-        epsilon: float = 1e-3
-        percentile = 0.1
 
         image = self.image_list[idx]
         if isinstance(image, np.ndarray):
@@ -24,10 +23,6 @@ class ImageDataset(Dataset):
 
         image = torch.atleast_3d(image)
 
-        for c in range(image.shape[0]):
-            if image.is_cuda or image.is_mps:
-                (p_min, p_max) = torch.quantile(image, torch.tensor([percentile / 100, (100 - percentile) / 100], device = image.device))
-            else:
-                (p_min, p_max) = np.percentile(image.cpu(), [percentile, 100 - percentile])
-            image[c] = (image[c] - p_min) / max(epsilon, p_max - p_min)
+        image = percentile_normalize(image)
+
         return image
