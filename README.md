@@ -75,8 +75,6 @@ volumetric_masks = full_stitch(yx_masks, yz_masks, xz_masks)
     Default False
 * **output_path**: Set to None to write to the input file location (if provided). Ignored of output_masks is False.
     Default None
-* **stitch_method**: "iou" for Cellpose IoU stitching, or "cellstitch" for CellStitch stitching.
-    Default "cellstitch"
 * **seg_mode**: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
     masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
     Default "nuclei_cells"

@@ -3,7 +3,6 @@ import os
 
 from cellstitch_cuda.alignment import _label_overlap_cupy
 from instanseg import InstanSeg
-from cellpose.utils import stitch3D
 from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks, filter_nuclei_cells
 
 from cellstitch_cuda.alignment import *
@@ -147,7 +146,6 @@ def cellstitch_cuda(
     img,
     output_masks: bool = False,
     output_path=None,
-    stitch_method: str = "cellstitch",
     seg_mode: str = "nuclei_cells",
     pixel_size=None,
     z_step=None,
@@ -161,9 +159,8 @@ def cellstitch_cuda(
     Full stitching pipeline, which does the following:
         1. Histogram-based signal degradation correction
         2. Segmentation over the Z axis using InstanSeg
-        3. Stitching of 2D planes into 3D labels, by one of two methods:
-            a. Cellpose's standard Intersect over Union (IoU) calculation
-            b. CellStitch's orthogonal labeling, which leverages Optimal Transport to create robust masks.
+        3. Stitching of 2D planes into 3D labels through CellStitch's orthogonal labeling, which leverages Optimal
+            Transport to create robust masks.
 
     Args:
         img: Either a path pointing to an existing image, or a numpy.ndarray. Must be 4D (ZCYX).
@@ -171,8 +168,6 @@ def cellstitch_cuda(
             Default False
         output_path: Set to None to write to the input file location (if provided). Ignored of output_masks is False.
             Default None
-        stitch_method: "iou" for Cellpose IoU stitching, or "cellstitch" for CellStitch stitching.
-            Default "cellstitch"
         seg_mode: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
             masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
             Default "nuclei_cells"
@@ -292,95 +287,68 @@ def cellstitch_cuda(
     if output_masks:
         tifffile.imwrite(os.path.join(output_path, "yx_masks.tif"), yx_masks)
 
-    if stitch_method == "iou":
+    # Segment over X-axis
+    if verbose:
+        print("Segmenting YZ planes (X-axis).")
+    transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
+    transposed_img = upscale_img(
+        transposed_img, pixel_size, z_step
+    )  # Preprocess YZ planes
+    cp._default_memory_pool.free_all_blocks()
+    yz_masks = segmentation(transposed_img, model, seg_mode)
+    del transposed_img
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
+    yz_masks = downscale_mask(
+        yz_masks, pixel_size, z_step
+    ).transpose(
+        1, 0, 2
+    )  # YZX -> ZYX
+    cp._default_memory_pool.free_all_blocks()
+    if output_masks:
+        tifffile.imwrite(os.path.join(output_path, "yz_masks.tif"), yz_masks)
 
-        # Memory cleanup
-        del model, img
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # Clear GPU cache
+    # Segment over Y-axis
+    if verbose:
+        print("Segmenting XZ planes (Y-axis).")
+    transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
+    transposed_img = upscale_img(
+        transposed_img, pixel_size, z_step
+    )  # Preprocess XZ planes
+    cp._default_memory_pool.free_all_blocks()
+    xz_masks = segmentation(transposed_img, model, seg_mode)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
+    xz_masks = downscale_mask(
+        xz_masks, pixel_size, z_step
+    ).transpose(
+        1, 2, 0
+    )  # XZY -> ZYX
+    cp._default_memory_pool.free_all_blocks()
+    if output_masks:
+        tifffile.imwrite(os.path.join(output_path, "xz_masks.tif"), xz_masks)
 
-        if verbose:
-            print("Running IoU stitching...")
+    # Memory cleanup
+    del model, img, transposed_img
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
 
-        iou_masks = stitch3D(yx_masks, stitch_threshold=0.25)
+    if verbose:
+        print("Running CellStitch stitching...")
 
-        if seg_mode == "nuclei_cells":
-            iou_masks = filter_nuclei_cells(iou_masks, nuclei)
-
-        if output_masks:
-            tifffile.imwrite(os.path.join(output_path, "iou_masks.tif"), iou_masks)
-
-        return iou_masks
-
-    elif stitch_method == "cellstitch":
-
-        # Segment over X-axis
-        if verbose:
-            print("Segmenting YZ planes (X-axis).")
-        transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
-        transposed_img = upscale_img(
-            transposed_img, pixel_size, z_step
-        )  # Preprocess YZ planes
-        cp._default_memory_pool.free_all_blocks()
-        yz_masks = segmentation(transposed_img, model, seg_mode)
-        del transposed_img
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # Clear GPU cache
-        yz_masks = downscale_mask(
-            yz_masks, pixel_size, z_step
-        ).transpose(
-            1, 0, 2
-        )  # YZX -> ZYX
-        cp._default_memory_pool.free_all_blocks()
-        if output_masks:
-            tifffile.imwrite(os.path.join(output_path, "yz_masks.tif"), yz_masks)
-
-        # Segment over Y-axis
-        if verbose:
-            print("Segmenting XZ planes (Y-axis).")
-        transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
-        transposed_img = upscale_img(
-            transposed_img, pixel_size, z_step
-        )  # Preprocess XZ planes
-        cp._default_memory_pool.free_all_blocks()
-        xz_masks = segmentation(transposed_img, model, seg_mode)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # Clear GPU cache
-        xz_masks = downscale_mask(
-            xz_masks, pixel_size, z_step
-        ).transpose(
-            1, 2, 0
-        )  # XZY -> ZYX
-        cp._default_memory_pool.free_all_blocks()
-        if output_masks:
-            tifffile.imwrite(os.path.join(output_path, "xz_masks.tif"), xz_masks)
-
-        # Memory cleanup
-        del model, img, transposed_img
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # Clear GPU cache
-
-        if verbose:
-            print("Running CellStitch stitching...")
-
-        if seg_mode == "nuclei_cells":
-            cellstitch_masks = full_stitch(
-                yx_masks, yz_masks, xz_masks, nuclei, filter=filtering, verbose=verbose
-            )
-        else:
-            cellstitch_masks = full_stitch(
-                yx_masks, yz_masks, xz_masks, filter=filtering, n_jobs=n_jobs, verbose=verbose
-            )
-
-        if output_masks:
-            tifffile.imwrite(
-                os.path.join(output_path, "cellstitch_masks.tif"), cellstitch_masks
-            )
-
-        return cellstitch_masks
-
-    else:
-        print(
-            'Incompatible stitching method. Supported options are "iou" and "cellstitch".'
+    if seg_mode == "nuclei_cells":
+        cellstitch_masks = full_stitch(
+            yx_masks, yz_masks, xz_masks, nuclei, filter=filtering, n_jobs=n_jobs, verbose=verbose
         )
-        sys.exit(1)
+    else:
+        cellstitch_masks = full_stitch(
+            yx_masks, yz_masks, xz_masks, filter=filtering, n_jobs=n_jobs, verbose=verbose
+        )
+
+
+    if output_masks:
+        tifffile.imwrite(
+            os.path.join(output_path, "cellstitch_masks.tif"), cellstitch_masks
+        )
+
+    return cellstitch_masks
