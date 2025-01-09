@@ -16,7 +16,7 @@ def downscale_mask(masks, pixel=None, z_res=None):
     masks = cp.asarray(masks)
 
     anisotropy = z_res / pixel
-    zoom_factors = (1/(pixel/0.5), 1 / (anisotropy*(pixel/0.5)), 1)
+    zoom_factors = (1 / (pixel / 0.5), 1 / (anisotropy * (pixel / 0.5)), 1)
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     masks = zoom(masks, zoom_factors, order=order).get()
@@ -32,7 +32,11 @@ def upscale_img(images, pixel=None, z_res=None):
         z_res = 1
 
     anisotropy = z_res / pixel
-    zoom_factors = (pixel/0.5, anisotropy*(pixel/0.5), 1)  # Pre-zoom for InstanSeg (expected pixel size = 0.5)
+    zoom_factors = (
+        pixel / 0.5,
+        anisotropy * (pixel / 0.5),
+        1,
+    )  # Pre-zoom for InstanSeg (expected pixel size = 0.5)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     zoomed = []
@@ -120,7 +124,10 @@ def _correct(channel, match):
 
 
 def segment_single_slice_medium(
-    d, model, tiles, batch_size,
+    d,
+    model,
+    tiles,
+    batch_size,
 ):
     res = model.eval_medium_image(
         d,
@@ -130,7 +137,7 @@ def segment_single_slice_medium(
         cleanup_fragments=True,
         tile_size=tiles,
         batch_size=batch_size,
-        normalise=True
+        normalise=True,
     )
     return res[0]
 
@@ -142,7 +149,7 @@ def segment_single_slice_small(d, model):
         pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
-        normalise=True
+        normalise=True,
     )
     return res[0]
 
@@ -152,13 +159,19 @@ def segment_batch_slice_small(d, model):
     for batch in d:
         batch = batch.to(model.inference_device)
         target_segmentation = torch.tensor([1, 1])
-        with torch.amp.autocast('cuda'):
+        with torch.amp.autocast("cuda"):
             instanseg_kwargs = {"cleanup_fragments": True}
-            instances = model.instanseg(batch, target_segmentation=target_segmentation, **instanseg_kwargs)
+            instances = model.instanseg(
+                batch, target_segmentation=target_segmentation, **instanseg_kwargs
+            )
         res = instances.cpu()
         result.append(res.numpy().astype("uint32"))
-    result = [k for b in result for k in b]  # For each z plane found in each batch b in result, stack the z planes
-    result = np.stack(result).transpose(1, 2, 3, 0)  # ZcYX --> cYXZ || kcij --> cijk (for iterator k)
+    result = [
+        k for b in result for k in b
+    ]  # For each z plane found in each batch b in result, stack the z planes
+    result = np.stack(result).transpose(
+        1, 2, 3, 0
+    )  # ZcYX --> cYXZ || kcij --> cijk (for iterator k)
 
     return result[1], result[0]
 
@@ -176,15 +189,21 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     nslices = d.shape[-1]
 
     vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
-    vram_est = 0.1765 * np.prod(d.shape[0:3])  # Magic number literally obtained by plotting in Excel
+    vram_est = 0.1765 * np.prod(
+        d.shape[0:3]
+    )  # Magic number literally obtained by plotting in Excel
 
     tiles = 1024
     if vram < vram_est:
         small = False
-        vram_est = 0.1765 * tiles**2 * d.shape[0]  # Base VRAM estimate on batch size, multiplied by channels
+        vram_est = (
+            0.1765 * tiles**2 * d.shape[0]
+        )  # Base VRAM estimate on batch size, multiplied by channels
         batch = int(vram / vram_est)
         if batch == 0:
-            print("Not enough VRAM available for 1024x1024 tiles. Decreasing to standard 512x512.")
+            print(
+                "Not enough VRAM available for 1024x1024 tiles. Decreasing to standard 512x512."
+            )
             tiles = 512
             vram_est = 0.1765 * tiles**2 * d.shape[0]
             batch = int(vram / vram_est)
@@ -195,11 +214,15 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
         small = True
 
     if small:  # For images that fit within VRAM in their entirety:
-        batch = int(vram/vram_est)
+        batch = int(vram / vram_est)
         if batch > 2:
             d = d.transpose(3, 0, 1, 2)  # CYXZ --> ZCYX || Cijk --> kCij
-            dataset = ImageDataset(d)
-            dataloader = DataLoader(dataset, batch_size=batch-1, shuffle=False, drop_last=False)
+            dataset = ImageDataset(
+                d
+            )  # Create a dataset that handles images similar to Instanseg
+            dataloader = DataLoader(
+                dataset, batch_size=batch - 1, shuffle=False, drop_last=False
+            )  # Leverage torch batching through DataLoader
             empty_res, nuclei = segment_batch_slice_small(dataloader, model)
         else:  # If only 1 or 2 z planes fit into VRAM, go z by z (or whichever iterating image axis is last)
             empty_res = np.zeros_like(d[0])
@@ -213,7 +236,9 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
         empty_res = np.zeros_like(d[0])
         nuclei = empty_res.copy()
         for xyz in range(nslices):
-            res_slice = segment_single_slice_medium(d[:, :, :, xyz], model, tiles, batch)
+            res_slice = segment_single_slice_medium(
+                d[:, :, :, xyz], model, tiles, batch
+            )
             empty_res[:, :, xyz] = res_slice[mode]
             if nuclei_cells:
                 nuclei[:, :, xyz] = res_slice[0]

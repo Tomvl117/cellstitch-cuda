@@ -3,7 +3,10 @@ import os
 
 from cellstitch_cuda.alignment import _label_overlap_cupy
 from instanseg import InstanSeg
-from cellstitch_cuda.postprocessing_cupy import fill_holes_and_remove_small_masks, filter_nuclei_cells
+from cellstitch_cuda.postprocessing_cupy import (
+    fill_holes_and_remove_small_masks,
+    filter_nuclei_cells,
+)
 
 from cellstitch_cuda.alignment import *
 from cellstitch_cuda.preprocessing_cupy import *
@@ -51,7 +54,15 @@ def overseg_correction(masks):
     return masks
 
 
-def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = True, n_jobs=-1, verbose=False):
+def full_stitch(
+    xy_masks_prior,
+    yz_masks,
+    xz_masks,
+    nuclei=None,
+    filter: bool = True,
+    n_jobs=-1,
+    verbose=False,
+):
     """Stitch masks in-place
 
     Stitches masks from top to bottom.
@@ -128,9 +139,7 @@ def full_stitch(xy_masks_prior, yz_masks, xz_masks, nuclei=None, filter: bool = 
         xy_masks = filter_nuclei_cells(xy_masks, nuclei)
         cp._default_memory_pool.free_all_blocks()
         if verbose:
-            print(
-                "Time to filter cells with nuclei: ", time.time() - time_start
-            )
+            print("Time to filter cells with nuclei: ", time.time() - time_start)
 
     time_start = time.time()
 
@@ -214,7 +223,9 @@ def cellstitch_cuda(
     # Set pixel sizes
     if pixel_size is None:
         try:
-            pixel_size = 1 / (tags["XResolution"].value[0] / tags["XResolution"].value[1])
+            pixel_size = 1 / (
+                tags["XResolution"].value[0] / tags["XResolution"].value[1]
+            )
             if verbose:
                 print("Pixel size:", pixel_size)
         except:
@@ -267,19 +278,13 @@ def cellstitch_cuda(
 
     yx_masks = segmentation(img, model, seg_mode, xy=True)
     if seg_mode == "nuclei_cells":
-        nuclei = yx_masks[1].transpose(
-            2, 0, 1
-        )  # YXZ -> ZYX
-        yx_masks = yx_masks[0].transpose(
-            2, 0, 1
-        )  # YXZ -> ZYX
+        nuclei = yx_masks[1].transpose(2, 0, 1)  # YXZ -> ZYX
+        yx_masks = yx_masks[0].transpose(2, 0, 1)  # YXZ -> ZYX
 
         if output_masks:
             tifffile.imwrite(os.path.join(output_path, "nuclei_masks.tif"), nuclei)
     else:
-        yx_masks = yx_masks.transpose(
-            2, 0, 1
-        )  # YXZ -> ZYX
+        yx_masks = yx_masks.transpose(2, 0, 1)  # YXZ -> ZYX
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
@@ -299,9 +304,7 @@ def cellstitch_cuda(
     del transposed_img
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    yz_masks = downscale_mask(
-        yz_masks, pixel_size, z_step
-    ).transpose(
+    yz_masks = downscale_mask(yz_masks, pixel_size, z_step).transpose(
         1, 0, 2
     )  # YZX -> ZYX
     cp._default_memory_pool.free_all_blocks()
@@ -319,9 +322,7 @@ def cellstitch_cuda(
     xz_masks = segmentation(transposed_img, model, seg_mode)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    xz_masks = downscale_mask(
-        xz_masks, pixel_size, z_step
-    ).transpose(
+    xz_masks = downscale_mask(xz_masks, pixel_size, z_step).transpose(
         1, 2, 0
     )  # XZY -> ZYX
     cp._default_memory_pool.free_all_blocks()
@@ -338,11 +339,22 @@ def cellstitch_cuda(
 
     if seg_mode == "nuclei_cells":
         cellstitch_masks = full_stitch(
-            yx_masks, yz_masks, xz_masks, nuclei, filter=filtering, n_jobs=n_jobs, verbose=verbose
+            yx_masks,
+            yz_masks,
+            xz_masks,
+            nuclei,
+            filter=filtering,
+            n_jobs=n_jobs,
+            verbose=verbose,
         )
     else:
         cellstitch_masks = full_stitch(
-            yx_masks, yz_masks, xz_masks, filter=filtering, n_jobs=n_jobs, verbose=verbose
+            yx_masks,
+            yz_masks,
+            xz_masks,
+            filter=filtering,
+            n_jobs=n_jobs,
+            verbose=verbose,
         )
 
     cp._default_memory_pool.free_all_blocks()

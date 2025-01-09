@@ -22,7 +22,9 @@ class ImageDataset(Dataset):
 
         image = image.squeeze()
 
-        assert 3 >= image.dim() >= 2, f"Input image shape {image.shape} is not supported."
+        assert (
+            3 >= image.dim() >= 2
+        ), f"Input image shape {image.shape} is not supported."
 
         image = torch.atleast_3d(image)
 

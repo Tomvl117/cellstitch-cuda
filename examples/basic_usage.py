@@ -11,7 +11,6 @@ This is the bare minimum to run CUDA-accelerated CellStitch. Per the default set
     8. It will not return any major progress messages or write any files to disk.
 """
 
-
 from cellstitch_cuda.pipeline import cellstitch_cuda
 
 

@@ -141,18 +141,18 @@ class FramePair:
 def _label_overlap_cupy(x, y):
     """Fast function to get pixel overlaps between masks in x and y.
 
-        Args:
-            x (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
-            y (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
+    Args:
+        x (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
+        y (np.ndarray, int): Where 0=NO masks; 1,2... are mask labels.
 
-        Returns:
-            overlap (np.ndarray, int): Matrix of pixel overlaps of size [x.max()+1, y.max()+1].
+    Returns:
+        overlap (np.ndarray, int): Matrix of pixel overlaps of size [x.max()+1, y.max()+1].
 
-        Adapted from CellPose: https://github.com/MouseLand/cellpose
-            https://doi.org/10.1038/s41592-020-01018-x: Stringer, C., Wang, T., Michaelos, M., & Pachitariu, M. (2021).
-            Cellpose: a generalist algorithm for cellular segmentation. Nature methods, 18(1), 100-106.
-            Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
-        """
+    Adapted from CellPose: https://github.com/MouseLand/cellpose
+        https://doi.org/10.1038/s41592-020-01018-x: Stringer, C., Wang, T., Michaelos, M., & Pachitariu, M. (2021).
+        Cellpose: a generalist algorithm for cellular segmentation. Nature methods, 18(1), 100-106.
+        Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
+    """
     # put label arrays into standard form then flatten them
     x = cp.asarray(x.ravel())
     y = cp.asarray(y.ravel())

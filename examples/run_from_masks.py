@@ -5,7 +5,6 @@ entire pipeline. Instead, you can skip straight to the optimized CellStitch calc
 CellPose's IoU output with the same dataset. This is all possible and supported.
 """
 
-
 import tifffile
 import os
 from cellpose.utils import stitch3D
