@@ -74,18 +74,9 @@ def filter_nuclei_cells(volumetric_masks, nuclei_masks):
 
     nuclear_cells = cp.zeros_like(volumetric_masks)
 
-    unique_labels = cp.unique(volumetric_masks)
+    unique_labels = cp.unique(volumetric_masks[nuclei_masks])
 
-    # Initialize new label ID
-    new_label_id = 1
     for label_id in unique_labels[unique_labels != 0]:
-
-        # Create a boolean mask for each label ID
-        mask = (volumetric_masks == label_id)
-
-        # If there is any overlap between the mask and the known nuclei
-        if cp.any(mask & nuclei_masks):
-            nuclear_cells[mask] = new_label_id  # Assign new label ID
-            new_label_id += 1
+        nuclear_cells[volumetric_masks == label_id] = label_id
 
     return nuclear_cells.get()
