@@ -345,6 +345,9 @@ def cellstitch_cuda(
             yx_masks, yz_masks, xz_masks, filter=filtering, n_jobs=n_jobs, verbose=verbose
         )
 
+    cp._default_memory_pool.free_all_blocks()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
 
     if output_masks:
         tifffile.imwrite(
