@@ -1,10 +1,10 @@
 import ot
 import ot.plot
-import cupy as cp
 import numpy as np
-from cupyx.scipy import ndimage as ndi
+from scipy import ndimage as ndi
 
 from cellpose import utils as cp_utils
+from joblib import Parallel, delayed
 
 
 # -------------------------------
@@ -165,7 +165,7 @@ def contour_to_mask(contour):
     lbl = get_lbls(contour)[0]
     """ Convert contour to solid masks with fill-in labels"""
     binary_contour = contour > 0
-    binary_mask = ndi.binary_fill_holes(cp.asarray(binary_contour))
+    binary_mask = ndi.binary_fill_holes(np.asarray(binary_contour))
 
     mask = np.zeros_like(binary_contour)
     mask[binary_mask] = lbl
@@ -269,7 +269,7 @@ def connect_boundary(coords, size, lbl=1):
 
     connect(tuple(sorted_coords[-1]), tuple(sorted_coords[0]), mask)
 
-    return cp.asarray(mask)
+    return mask
 
 
 # -----------------------------
@@ -277,7 +277,7 @@ def connect_boundary(coords, size, lbl=1):
 # -----------------------------
 
 
-def interp_layers(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
+def interp_layers_parallel(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
     """
     Interpolating adjacent z-layers
     """
@@ -328,10 +328,11 @@ def interp_layers(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
             len(joint_lbls),  # num. individual masks
             shape[0],  # x
             shape[1],  # y
-        )
+        ),
+        dtype=sc_mask.dtype,
     )
 
-    for i, lbl in enumerate(joint_lbls):
+    def process_label(lbl):
         sc_ct = (sc_contour == lbl).astype(np.uint8)
         tg_ct = (tg_contour == lbl).astype(np.uint8)
 
@@ -342,10 +343,15 @@ def interp_layers(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
             sc_coord, tg_coord, dist=dist, anisotropy=anisotropy
         )
         interps = [
-            ndi.binary_fill_holes(connect_boundary(interp, shape)).get() * lbl
+            ndi.binary_fill_holes(connect_boundary(interp, shape)) * lbl
             for interp in interp_coords
         ]
 
+        return interps
+
+    results = Parallel(n_jobs=-1)(delayed(process_label)(lbl) for lbl in joint_lbls)
+
+    for i, interps in enumerate(results):
         interp_masks[1:-1, i, ...] = interps
 
     interp_masks = interp_masks.max(1)
@@ -375,20 +381,28 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
         (dim: (Depth * anisotropy - (anisotropy-1), H, W))
 
     """
+    if masks.max() < 256:
+        masks = masks.astype("uint8")
+    elif masks.max() < 65536:
+        masks = masks.astype("uint16")
+
+    dtype = masks.dtype
+
     interp_masks = np.zeros(
         (
             len(masks) + (len(masks) - 1) * (anisotropy - 1),
             masks.shape[1],
             masks.shape[2],
-        )
+        ),
+        dtype=dtype,
     )
 
     idx = 0
     for i, sc_mask in enumerate(masks[:-1]):
-        if verbose and i % 20 == 0:
+        if verbose:
             print("Interpolating layer {} & {}...".format(i, i + 1))
         tg_mask = masks[i + 1]
-        interps = interp_layers(sc_mask, tg_mask, dist=dist, anisotropy=anisotropy)
+        interps = interp_layers_parallel(sc_mask, tg_mask, dist=dist, anisotropy=anisotropy)
         interp_masks[idx : idx + anisotropy + 1] = interps
         idx += anisotropy
 
