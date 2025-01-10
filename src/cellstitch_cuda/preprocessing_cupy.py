@@ -215,16 +215,16 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
 
     if small:  # For images that fit within VRAM in their entirety:
         batch = int(vram / vram_est)
-        if batch > 2:
+        if batch > 3:  # If over 3 slices would fit into VRAM in their entirety
             d = d.transpose(3, 0, 1, 2)  # CYXZ --> ZCYX || Cijk --> kCij
             dataset = ImageDataset(
                 d
             )  # Create a dataset that handles images similar to Instanseg
             dataloader = DataLoader(
-                dataset, batch_size=batch - 1, shuffle=False, drop_last=False
+                dataset, batch_size=batch - 2, shuffle=False, drop_last=False
             )  # Leverage torch batching through DataLoader
             empty_res, nuclei = segment_batch_slice_small(dataloader, model)
-        else:  # If only 1 or 2 z planes fit into VRAM, go z by z (or whichever iterating image axis is last)
+        else:  # Otherwise, go slice by slice
             empty_res = np.zeros_like(d[0])
             nuclei = empty_res.copy()
             for xyz in range(nslices):
