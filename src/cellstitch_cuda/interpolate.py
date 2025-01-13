@@ -5,6 +5,7 @@ from scipy import ndimage as ndi
 
 from cellpose import utils as cp_utils
 from joblib import Parallel, delayed
+from skimage.measure import regionprops
 
 
 # -------------------------------
@@ -408,10 +409,49 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
 
     return interp_masks
 
+
+def full_interpolate_bbox(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
+    """
+    Interpolating between all adjacent z-layers
+
+    Parameters
+    ----------
+    masks : np.ndarray
+        layers of 2D predictions
+        (dim: (Depth, H, W))
+
+    anisotropy : int
+        Ratio of sampling rate between xy-axes & z-axis
+
+    Returns
+    -------|
+    interp_masks : np.ndarray
+        interpolated masks
+        (dim: (Depth * anisotropy - (anisotropy-1), H, W))
+
+    """
+    if masks.max() < 256:
+        masks = masks.astype("uint8")
+    elif masks.max() < 65536:
+        masks = masks.astype("uint16")
+
+    dtype = masks.dtype
+
+    interp_masks = np.zeros(
+        (
+            len(masks) + (len(masks) - 1) * (anisotropy - 1),
+            masks.shape[1],
+            masks.shape[2],
+        ),
+        dtype=dtype,
+    )
+
+    idx = 0
+    for i in range(masks.shape[0] - 2):
         if verbose:
             print("Interpolating layer {} & {}...".format(i, i + 1))
-        tg_mask = masks[i + 1]
-        interps = interp_layers_parallel(sc_mask, tg_mask, dist=dist, anisotropy=anisotropy)
+        source_target = masks[i:i+2]
+        interps = interp_layers_parallel_bbox(source_target, dist=dist, anisotropy=anisotropy)
         interp_masks[idx : idx + anisotropy + 1] = interps
         idx += anisotropy
 
