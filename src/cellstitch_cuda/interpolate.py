@@ -222,12 +222,12 @@ def connect(coord1, coord2, mask):
             mask[added_x + i * np.sign(x_offset), added_y] = 1
 
 
-def calc_angles(sc_pt, tg_pts, eps=1e-20):
+def calc_angles(source_point, target_points, eps=1e-20):
     """
-    Calculate angle (rad) between source point (sc_pt) & list of target points(tg_pts, dim=(n, 2))
+    Calculate angle (rad) between source point (source_point) & list of target points(target_points, dim=(n, 2))
     """
-    sc_pts = np.tile(sc_pt, (tg_pts.shape[0], 1))
-    diff = tg_pts - sc_pts
+    source_points = np.tile(source_point, (target_points.shape[0], 1))
+    diff = target_points - source_points
     angles = np.apply_along_axis(
         lambda x: np.arctan2(x[1], x[0] + eps), axis=1, arr=diff
     )
@@ -277,7 +277,7 @@ def connect_boundary(coords, size, lbl=1):
 # -----------------------------
 
 
-def interp_layers_parallel(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
+def interp_layers_parallel(source_mask, target_mask, dist="sqeuclidean", anisotropy=2):
     """
     Interpolating adjacent z-layers
     """
@@ -294,33 +294,33 @@ def interp_layers_parallel(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
         )
         return dy[mask], dx[mask]
 
-    shape = sc_mask.shape
-    sc_contour = get_contours(sc_mask)
-    tg_contour = get_contours(tg_mask)
+    shape = source_mask.shape
+    source_contour = get_contours(source_mask)
+    target_contour = get_contours(target_mask)
 
     # Boundary condition: if empty on source / target label
     # align the empty slice w/ mass centers to represent instance endings
-    sc_dummy = np.zeros_like(sc_mask)
-    tg_dummy = np.zeros_like(tg_mask)
-    if not np.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour)).size:
-        if (sc_contour.sum() == tg_contour.sum() == 0) or (
-            np.logical_and(sc_mask, tg_mask).sum() > 0
+    source_dummy = np.zeros_like(source_mask)
+    target_dummy = np.zeros_like(target_mask)
+    if not np.intersect1d(get_lbls(source_contour), get_lbls(target_contour)).size:
+        if (source_contour.sum() == target_contour.sum() == 0) or (
+            np.logical_and(source_mask, target_mask).sum() > 0
         ):
             return np.zeros(shape)
         get_mask_center = lambda x: (
             np.round(np.nonzero(x)[0].sum() / x.sum()).astype(np.uint16),
             np.round(np.nonzero(x)[1].sum() / x.sum()).astype(np.uint16),
         )
-        for lbl in get_lbls(sc_contour):
-            yc, xc = _dilation(get_mask_center(sc_mask == lbl), sc_mask.shape)
-            tg_dummy[yc, xc] = lbl
-        for lbl in get_lbls(tg_contour):
-            yc, xc = _dilation(get_mask_center(tg_mask == lbl), tg_mask.shape)
-            sc_dummy[yc, xc] = lbl
-        sc_contour += sc_dummy
-        tg_contour += tg_dummy
+        for lbl in get_lbls(source_contour):
+            yc, xc = _dilation(get_mask_center(source_mask == lbl), source_mask.shape)
+            target_dummy[yc, xc] = lbl
+        for lbl in get_lbls(target_contour):
+            yc, xc = _dilation(get_mask_center(target_mask == lbl), target_mask.shape)
+            source_dummy[yc, xc] = lbl
+        source_contour += source_dummy
+        target_contour += target_dummy
 
-    joint_lbls = np.intersect1d(get_lbls(sc_contour), get_lbls(tg_contour))
+    joint_lbls = np.intersect1d(get_lbls(source_contour), get_lbls(target_contour))
 
     interp_masks = np.zeros(
         (
@@ -329,18 +329,18 @@ def interp_layers_parallel(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
             shape[0],  # x
             shape[1],  # y
         ),
-        dtype=sc_mask.dtype,
+        dtype=source_mask.dtype,
     )
 
     def process_label(lbl):
-        sc_ct = (sc_contour == lbl).astype(np.uint8)
-        tg_ct = (tg_contour == lbl).astype(np.uint8)
+        source_ct = (source_contour == lbl).astype(np.uint8)
+        target_ct = (target_contour == lbl).astype(np.uint8)
 
-        sc_coord = mask_to_coord(sc_ct)
-        tg_coord = mask_to_coord(tg_ct)
+        source_coord = mask_to_coord(source_ct)
+        target_coord = mask_to_coord(target_ct)
 
         interp_coords = interpolate(
-            sc_coord, tg_coord, dist=dist, anisotropy=anisotropy
+            source_coord, target_coord, dist=dist, anisotropy=anisotropy
         )
         interps = [
             ndi.binary_fill_holes(connect_boundary(interp, shape)) * lbl
@@ -355,8 +355,8 @@ def interp_layers_parallel(sc_mask, tg_mask, dist="sqeuclidean", anisotropy=2):
         interp_masks[1:-1, i, ...] = interps
 
     interp_masks = interp_masks.max(1)
-    interp_masks[0] = sc_mask
-    interp_masks[-1] = tg_mask
+    interp_masks[0] = source_mask
+    interp_masks[-1] = target_mask
 
     return interp_masks
 
@@ -398,7 +398,16 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
     )
 
     idx = 0
-    for i, sc_mask in enumerate(masks[:-1]):
+    for i, source_mask in enumerate(masks[:-1]):
+        if verbose:
+            print("Interpolating layer {} & {}...".format(i, i + 1))
+        target_mask = masks[i + 1]
+        interps = interp_layers_parallel(source_mask, target_mask, dist=dist, anisotropy=anisotropy)
+        interp_masks[idx : idx + anisotropy + 1] = interps
+        idx += anisotropy
+
+    return interp_masks
+
         if verbose:
             print("Interpolating layer {} & {}...".format(i, i + 1))
         tg_mask = masks[i + 1]
