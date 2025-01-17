@@ -362,7 +362,7 @@ def interp_layers_parallel(source_mask, target_mask, dist="sqeuclidean", anisotr
     return interp_masks
 
 
-def process_region(label, cell_mask, dist, anisotropy):
+def process_region(label_slice, cell_mask, dist, anisotropy):
 
     def _dilation(coords, lims):
         y, x = coords
@@ -376,7 +376,7 @@ def process_region(label, cell_mask, dist, anisotropy):
         )
         return dy[mask], dx[mask]
 
-    coordinates = label.slice
+    coordinates = label_slice
     if coordinates[0].start > 0:
         cell_mask = np.concatenate((np.zeros(shape=cell_mask.shape), cell_mask))
     if coordinates[0].stop < 2:
@@ -448,9 +448,9 @@ def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2)
 
     regions = regionprops(source_target)
 
-    results = Parallel(n_jobs=1)(
+    results = Parallel(n_jobs=-1)(
         delayed(process_region)(
-            region,
+            region.slice,
             (source_target[region.slice] * region.image),
             dist,
             anisotropy,
