@@ -83,7 +83,7 @@ def interpolate(pc1, pc2, dist="sqeuclidean", anisotropy=2):
 
 def get_lbls(mask):
     """Get unique labels from the predicted masks"""
-    return np.unique(mask)[1:]
+    return np.unique(mask[mask != 0])
 
 
 def min_size_filter(res, thld=100):
