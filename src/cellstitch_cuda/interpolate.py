@@ -442,7 +442,7 @@ def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2)
         target_contour += target_dummy
 
     # Determine which labels are intersecting
-    joint_lbls = set(np.intersect1d(get_lbls(source_contour), get_lbls(target_contour)))
+    joint_lbls = np.intersect1d(get_lbls(source_contour), get_lbls(target_contour))
 
     # Reassign source_target
     source_target = np.stack((source_contour, target_contour))
