@@ -2,6 +2,7 @@ import ot
 import ot.plot
 import numpy as np
 from scipy import ndimage as ndi
+import fill_voids
 import time
 
 from cellpose import utils as cp_utils
@@ -345,7 +346,7 @@ def interp_layers_parallel(source_mask, target_mask, dist="sqeuclidean", anisotr
             source_coord, target_coord, dist=dist, anisotropy=anisotropy
         )
         interps = [
-            ndi.binary_fill_holes(connect_boundary(interp, shape)) * lbl
+            fill_voids.fill(connect_boundary(interp, shape)) * lbl
             for interp in interp_coords
         ]
 
@@ -380,7 +381,7 @@ def process_region(label, label_slice, cell_mask, dist, anisotropy):
     )
 
     interps = [
-        ndi.binary_fill_holes(connect_boundary(interp, shape)) * label
+        fill_voids.fill(connect_boundary(interp, shape)) * label
         for interp in interp_coords
     ]
 
