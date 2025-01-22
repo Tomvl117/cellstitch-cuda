@@ -2,6 +2,7 @@ import ot
 import ot.plot
 import numpy as np
 from scipy import ndimage as ndi
+import time
 
 from cellpose import utils as cp_utils
 from joblib import Parallel, delayed
@@ -575,6 +576,7 @@ def full_interpolate_bbox(masks, anisotropy=2, dist="sqeuclidean", verbose=False
     idx = 0
     for i in range(masks.shape[0] - 1):
         if verbose:
+            time_start = time.time()
             print("Interpolating layer {} & {}...".format(i, i + 1))
         source_target = masks[i : i + 2].copy()
         interps = interp_layers_parallel_bbox(
@@ -582,5 +584,7 @@ def full_interpolate_bbox(masks, anisotropy=2, dist="sqeuclidean", verbose=False
         )
         interp_masks[idx : idx + anisotropy + 1] = interps
         idx += anisotropy
+        if verbose:
+            print("Time to interpolate: ", time.time() - time_start)
 
     return interp_masks
