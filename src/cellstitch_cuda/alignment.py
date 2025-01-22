@@ -101,7 +101,7 @@ class FramePair:
         soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
-        matched_indices = cp.argmax(plan, axis=1)
+        matched_indices = cp.argmin(C, axis=1)  # Use minimum cost instead of max plan probability
         soft_matching[cp.arange(n), matched_indices] = 1
 
         stitched_mask1 = cp.zeros_like(mask1)
