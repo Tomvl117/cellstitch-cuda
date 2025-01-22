@@ -28,6 +28,6 @@ class ImageDataset(Dataset):
 
         image = torch.atleast_3d(image)
 
-        # image = percentile_normalize(image)
+        image = percentile_normalize(image)
 
         return image

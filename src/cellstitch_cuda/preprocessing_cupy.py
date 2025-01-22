@@ -137,7 +137,7 @@ def segment_single_slice_medium(
         cleanup_fragments=True,
         tile_size=tiles,
         batch_size=batch_size,
-        normalise=False,
+        normalise=True,
     )
     return res[0]
 
@@ -149,7 +149,7 @@ def segment_single_slice_small(d, model):
         pixel_size=None,
         target="all_outputs",
         cleanup_fragments=True,
-        normalise=False,
+        normalise=True,
     )
     return res[0]
 
