@@ -1,6 +1,7 @@
 import cupy as cp
 import numpy as np
-from scipy.ndimage import find_objects, binary_fill_holes
+import fill_voids
+from scipy.ndimage import find_objects
 from joblib import Parallel, delayed
 
 
@@ -8,9 +9,9 @@ def process_slice(i, slc, masks):
     if slc is not None:
         msk = masks[slc] == (i + 1)
         if msk.ndim == 3:
-            msk = np.array([binary_fill_holes(msk[k]) for k in range(msk.shape[0])])
+            msk = np.array([fill_voids.fill(msk[k]) for k in range(msk.shape[0])])
         else:
-            msk = binary_fill_holes(msk)
+            msk = fill_voids.fill(msk)
         return slc, msk
     return None
 

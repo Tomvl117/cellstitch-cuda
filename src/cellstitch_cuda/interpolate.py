@@ -1,7 +1,6 @@
 import ot
 import ot.plot
 import numpy as np
-from scipy import ndimage as ndi
 import fill_voids
 import time
 
@@ -168,7 +167,7 @@ def contour_to_mask(contour):
     lbl = get_lbls(contour)[0]
     """ Convert contour to solid masks with fill-in labels"""
     binary_contour = contour > 0
-    binary_mask = ndi.binary_fill_holes(np.asarray(binary_contour))
+    binary_mask = fill_voids.fill(np.asarray(binary_contour))
 
     mask = np.zeros_like(binary_contour)
     mask[binary_mask] = lbl
@@ -476,8 +475,8 @@ def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2)
         x_min, x_max = coordinates[i][2].start, coordinates[i][2].stop
 
         interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] = np.where(
-            # interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] == 0,
-            interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] < mask,  # Should behave similar to picking max value
+            interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] == 0,
+            # interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] < mask,  # Should behave similar to picking max value
             mask,
             interp_masks[z_min:z_max, y_min:y_max, x_min:x_max],
         )
