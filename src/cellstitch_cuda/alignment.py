@@ -72,7 +72,7 @@ class FramePair:
 
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
         scaling_factors = overlap_sizes / (
-            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes
+            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes + 1e-6
         )
 
         C = 1 - scaling_factors
@@ -101,15 +101,15 @@ class FramePair:
         soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
-        matched_indices = plan.argmax(axis=1)
+        matched_indices = cp.argmax(plan, axis=1)
         soft_matching[cp.arange(n), matched_indices] = 1
 
-        stitched_mask1 = cp.zeros(mask1.shape)
+        stitched_mask1 = cp.zeros_like(mask1)
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
             filtered_C = cp.where(
-                matching_filter == 0, cp.Inf, C[:, lbl1_index]
+                matching_filter > 0, C[:, lbl1_index], cp.inf
             )  # ignore the non-matched cells
 
             lbl0_index = cp.argmin(
