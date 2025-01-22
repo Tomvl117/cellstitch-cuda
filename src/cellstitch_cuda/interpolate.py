@@ -362,7 +362,43 @@ def interp_layers_parallel(source_mask, target_mask, dist="sqeuclidean", anisotr
     return interp_masks
 
 
-def process_region(label_slice, cell_mask, dist, anisotropy):
+def process_region(label, label_slice, cell_mask, dist, anisotropy):
+
+    coordinates = label_slice
+
+    source_ct = cell_mask[0].astype(np.uint8)
+    target_ct = cell_mask[1].astype(np.uint8)
+
+    shape = source_ct.shape
+
+    source_coord = mask_to_coord(source_ct)
+    target_coord = mask_to_coord(target_ct)
+
+    interp_coords = interpolate(
+        source_coord, target_coord, dist=dist, anisotropy=anisotropy
+    )
+
+    interps = [
+        ndi.binary_fill_holes(connect_boundary(interp, shape)) * label
+        for interp in interp_coords
+    ]
+
+    return interps, list(coordinates)
+
+
+def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2):
+    """
+    Interpolating adjacent z-layers using bounding boxes after contouring
+    """
+
+    interp_masks = np.zeros(
+        (
+            anisotropy + 1,  # num. interpolated layers
+            source_target.shape[1],  # y
+            source_target.shape[2],  # x
+        ),
+        dtype=source_target.dtype,
+    )
 
     def _dilation(coords, lims):
         y, x = coords
@@ -376,15 +412,8 @@ def process_region(label_slice, cell_mask, dist, anisotropy):
         )
         return dy[mask], dx[mask]
 
-    coordinates = label_slice
-    if coordinates[0].start > 0:
-        cell_mask = np.concatenate((np.zeros(shape=cell_mask.shape), cell_mask))
-    if coordinates[0].stop < 2:
-        cell_mask = np.concatenate((cell_mask, np.zeros(shape=cell_mask.shape)))
-    if (cell_mask > 0).sum() < 10:
-        cell_mask = np.zeros(shape=cell_mask.shape)
-    source_mask = cell_mask[0]
-    target_mask = cell_mask[1]
+    source_mask = source_target[0]
+    target_mask = source_target[1]
 
     shape = source_mask.shape
     source_contour = get_contours(source_mask)
@@ -398,7 +427,7 @@ def process_region(label_slice, cell_mask, dist, anisotropy):
         if (source_contour.sum() == target_contour.sum() == 0) or (
             np.logical_and(source_mask, target_mask).sum() > 0
         ):
-            return np.zeros(shape), list(coordinates)
+            return np.zeros(shape)
         get_mask_center = lambda x: (
             np.round(np.nonzero(x)[0].sum() / x.sum()).astype(np.uint16),
             np.round(np.nonzero(x)[1].sum() / x.sum()).astype(np.uint16),
@@ -412,46 +441,24 @@ def process_region(label_slice, cell_mask, dist, anisotropy):
         source_contour += source_dummy
         target_contour += target_dummy
 
-    lbl = np.intersect1d(get_lbls(source_contour), get_lbls(target_contour))
+    # Determine which labels are intersecting
+    joint_lbls = set(np.intersect1d(get_lbls(source_contour), get_lbls(target_contour)))
 
-    source_ct = (source_contour == lbl).astype(np.uint8)
-    target_ct = (target_contour == lbl).astype(np.uint8)
+    # Reassign source_target
+    source_target = np.stack((source_contour, target_contour))
 
-    source_coord = mask_to_coord(source_ct)
-    target_coord = mask_to_coord(target_ct)
+    # Filter source_target for labels that are found to intersect
+    source_target = np.where(np.isin(source_target, joint_lbls), source_target, 0)
 
-    interp_coords = interpolate(
-        source_coord, target_coord, dist=dist, anisotropy=anisotropy
-    )
-
-    interps = [
-        ndi.binary_fill_holes(connect_boundary(interp, shape)) * lbl
-        for interp in interp_coords
-    ]
-
-    return interps, list(coordinates)
-
-
-def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2):
-    """
-    Interpolating adjacent z-layers
-    """
-
-    interp_masks = np.zeros(
-        (
-            anisotropy + 1,  # num. interpolated layers
-            source_target.shape[1],  # y
-            source_target.shape[2],  # x
-        ),
-        dtype=source_target.dtype,
-    )
-
+    # Use regionprops to set up bounding boxes based on the newly generated contours
     regions = regionprops(source_target)
 
+    # Parallel process bounding boxes
     results = Parallel(n_jobs=-1)(
         delayed(process_region)(
+            region.label,
             region.slice,
-            (source_target[region.slice] * region.image),
+            region.image,
             dist,
             anisotropy,
         )
@@ -460,19 +467,21 @@ def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2)
 
     masks, coordinates = zip(*results)
 
+    # Write each interpolated bounding box into the empty interp_masks array
     for i, mask in enumerate(masks):
         z_min, z_max = 1, anisotropy
         y_min, y_max = coordinates[i][1].start, coordinates[i][1].stop
         x_min, x_max = coordinates[i][2].start, coordinates[i][2].stop
 
         interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] = np.where(
-            interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] == 0,
+            # interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] == 0,
+            interp_masks[z_min:z_max, y_min:y_max, x_min:x_max] < mask,  # Should behave similar to picking max value
             mask,
             interp_masks[z_min:z_max, y_min:y_max, x_min:x_max],
         )
 
-    interp_masks[0] = source_target[0]
-    interp_masks[-1] = source_target[1]
+    interp_masks[0] = source_mask
+    interp_masks[-1] = target_mask
 
     return interp_masks
 
