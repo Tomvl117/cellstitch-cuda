@@ -279,90 +279,6 @@ def connect_boundary(coords, size, lbl=1):
 # -----------------------------
 
 
-def interp_layers_parallel(source_mask, target_mask, dist="sqeuclidean", anisotropy=2):
-    """
-    Interpolating adjacent z-layers
-    """
-
-    def _dilation(coords, lims):
-        y, x = coords
-        ymax, xmax = lims
-        dy, dx = np.meshgrid(
-            np.arange(y - 2, y + 3), np.arange(x - 2, x + 3), indexing="ij"
-        )
-        dy, dx = dy.flatten(), dx.flatten()
-        mask = np.logical_and(
-            np.logical_and(dy >= 0, dx >= 0), np.logical_and(dy < ymax, dx < xmax)
-        )
-        return dy[mask], dx[mask]
-
-    shape = source_mask.shape
-    source_contour = get_contours(source_mask)
-    target_contour = get_contours(target_mask)
-
-    # Boundary condition: if empty on source / target label
-    # align the empty slice w/ mass centers to represent instance endings
-    source_dummy = np.zeros_like(source_mask)
-    target_dummy = np.zeros_like(target_mask)
-    if not np.intersect1d(get_lbls(source_contour), get_lbls(target_contour)).size:
-        if (source_contour.sum() == target_contour.sum() == 0) or (
-            np.logical_and(source_mask, target_mask).sum() > 0
-        ):
-            return np.zeros(shape)
-        get_mask_center = lambda x: (
-            np.round(np.nonzero(x)[0].sum() / x.sum()).astype(np.uint16),
-            np.round(np.nonzero(x)[1].sum() / x.sum()).astype(np.uint16),
-        )
-        for lbl in get_lbls(source_contour):
-            yc, xc = _dilation(get_mask_center(source_mask == lbl), source_mask.shape)
-            target_dummy[yc, xc] = lbl
-        for lbl in get_lbls(target_contour):
-            yc, xc = _dilation(get_mask_center(target_mask == lbl), target_mask.shape)
-            source_dummy[yc, xc] = lbl
-        source_contour += source_dummy
-        target_contour += target_dummy
-
-    joint_lbls = np.intersect1d(get_lbls(source_contour), get_lbls(target_contour))
-
-    interp_masks = np.zeros(
-        (
-            anisotropy + 1,  # num. interpolated layers
-            len(joint_lbls),  # num. individual masks
-            shape[0],  # x
-            shape[1],  # y
-        ),
-        dtype=source_mask.dtype,
-    )
-
-    def process_label(lbl):
-        source_ct = (source_contour == lbl).astype(np.uint8)
-        target_ct = (target_contour == lbl).astype(np.uint8)
-
-        source_coord = mask_to_coord(source_ct)
-        target_coord = mask_to_coord(target_ct)
-
-        interp_coords = interpolate(
-            source_coord, target_coord, dist=dist, anisotropy=anisotropy
-        )
-        interps = [
-            fill_voids.fill(connect_boundary(interp, shape)) * lbl
-            for interp in interp_coords
-        ]
-
-        return interps
-
-    results = Parallel(n_jobs=-1)(delayed(process_label)(lbl) for lbl in joint_lbls)
-
-    for i, interps in enumerate(results):
-        interp_masks[1:-1, i, ...] = interps
-
-    interp_masks = interp_masks.max(1)
-    interp_masks[0] = source_mask
-    interp_masks[-1] = target_mask
-
-    return interp_masks
-
-
 def process_region(label, label_slice, cell_mask, dist, anisotropy):
 
     coordinates = label_slice
@@ -387,7 +303,7 @@ def process_region(label, label_slice, cell_mask, dist, anisotropy):
     return interps, list(coordinates)
 
 
-def interp_layers_parallel_bbox(source_target, dist="sqeuclidean", anisotropy=2):
+def interp_layers(source_target, dist="sqeuclidean", anisotropy=2):
     """
     Interpolating adjacent z-layers using bounding boxes after contouring
     """
@@ -524,62 +440,12 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
     )
 
     idx = 0
-    for i, source_mask in enumerate(masks[:-1]):
-        if verbose:
-            print("Interpolating layer {} & {}...".format(i, i + 1))
-        target_mask = masks[i + 1]
-        interps = interp_layers_parallel(
-            source_mask, target_mask, dist=dist, anisotropy=anisotropy
-        )
-        interp_masks[idx : idx + anisotropy + 1] = interps
-        idx += anisotropy
-
-    return interp_masks
-
-
-def full_interpolate_bbox(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
-    """
-    Interpolating between all adjacent z-layers
-
-    Parameters
-    ----------
-    masks : np.ndarray
-        layers of 2D predictions
-        (dim: (Depth, H, W))
-
-    anisotropy : int
-        Ratio of sampling rate between xy-axes & z-axis
-
-    Returns
-    -------|
-    interp_masks : np.ndarray
-        interpolated masks
-        (dim: (Depth * anisotropy - (anisotropy-1), H, W))
-
-    """
-    if masks.max() < 256:
-        masks = masks.astype("uint8")
-    elif masks.max() < 65536:
-        masks = masks.astype("uint16")
-
-    dtype = masks.dtype
-
-    interp_masks = np.zeros(
-        (
-            len(masks) + (len(masks) - 1) * (anisotropy - 1),
-            masks.shape[1],
-            masks.shape[2],
-        ),
-        dtype=dtype,
-    )
-
-    idx = 0
     for i in range(masks.shape[0] - 1):
         if verbose:
             time_start = time.time()
             print("Interpolating layer {} & {}...".format(i, i + 1))
         source_target = masks[i : i + 2].copy()
-        interps = interp_layers_parallel_bbox(
+        interps = interp_layers(
             source_target, dist=dist, anisotropy=anisotropy
         )
         interp_masks[idx : idx + anisotropy + 1] = interps
