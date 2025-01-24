@@ -17,6 +17,7 @@ Some major adjustments:
 * Completely rewrote the interpolation pipeline to obtain equal results with less RAM usage and at a much higher speed.
 
 ### Some comparisons
+#### Stitching
 The calculations were run on the same machine (GPU: NVIDIA Quadro RTX 6000 24 GB; CPU: Intel Xeon Gold 6252 (48/96
     cores); RAM: 1024 GB), the core count of which gave it a clear parallel-processing advantage. This particularly
     affects the `fill_holes_and_remove_small_masks` function, which has been rewritten to utilize parallel processing.
@@ -27,6 +28,16 @@ In image A, GPU VRAM load was ~200 MB at its peak.
 ![img-b](figures/cellstitch_img-b.svg)
 
 In image B, GPU VRAM load was ~2442 MB at its peak
+
+#### Interpolation
+The revised interpolation method leverages a more efficient alternative to SciPy's `binary_fill_holes`, speeding up
+    the process tremendously (>100x)
+
+Image: 10x1024x1024 px containing 4117 stitched masks
+|Metric  |Original|Revised |
+|--------|--------|--------|
+|Time (s)|3356.18 |26.31   |
+|RAM (GB)|~60     |~16     |
 
 ## Installation
 ### Notes
