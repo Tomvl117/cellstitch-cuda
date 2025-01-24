@@ -7,6 +7,7 @@ from cellstitch_cuda.postprocessing_cupy import (
     fill_holes_and_remove_small_masks,
     filter_nuclei_cells,
 )
+from cellstitch_cuda.interpolate import full_interpolate
 
 from cellstitch_cuda.alignment import *
 from cellstitch_cuda.preprocessing_cupy import *
@@ -160,6 +161,7 @@ def cellstitch_cuda(
     z_step=None,
     bleach_correct: bool = True,
     filtering: bool = True,
+    interpolation: bool = False,
     n_jobs: int = -1,
     verbose: bool = False,
 ):
@@ -175,7 +177,9 @@ def cellstitch_cuda(
         img: Either a path pointing to an existing image, or a numpy.ndarray. Must be 4D (ZCYX).
         output_masks: True to write all masks to the output path, or False to only return the final stitched mask.
             Default False
-        output_path: Set to None to write to the input file location (if provided). Ignored of output_masks is False.
+        output_path: Set to None to write to the input file location (if provided). Ignored of `output_masks` is False.
+            N.B.: If `output_masks` is True, while no path has been provided (e.g., by loading a numpy.ndarray
+            directly), the output masks will be written to the folder where the script is run from.
             Default None
         seg_mode: Instanseg segmentation mode: "nuclei" to only return nuclear masks, "cells" to return all the cell
             masks (including those without nuclei), or "nuclei_cells", which returns only cells with detected nuclei.
@@ -184,11 +188,15 @@ def cellstitch_cuda(
             Default None
         z_step: Z pixel size (z step) in microns per step. When set to None, will be read from img metadata if possible.
             Default None
-        bleach_correct: Whether histogram-based signal degradation correction should be applied to img.
+        bleach_correct: Whether histogram-based signal degradation correction should be applied to `img`.
             Default True
-        filtering: Whether the fill_holes_and_remove_small_masks function should be executed. With larger datasets, this
-            has the tendency to massively slow down the postprocessing.
+        filtering: Whether the optimized `fill_holes_and_remove_small_masks` function should be executed.
             Default True
+        interpolation: If set to True, the function returns a tuple of the array of stitched masks and an array with
+            interpolated volumetric masks. CellStitch provides an interpolation method to turn anisotropic masks into
+            pseudo-isotropic masks. The algorithm, adapted from the original codebase, has been completely rewritten for
+            efficient parallel processing. Outputs a separate mask in the output folder if `output_masks` = True.
+            Default False
         n_jobs: Set the number of threads to be used in parallel processing tasks. Use 1 for debugging. Generally, best
             left at the default value.
             Default -1
@@ -365,5 +373,31 @@ def cellstitch_cuda(
         tifffile.imwrite(
             os.path.join(output_path, "cellstitch_masks.tif"), cellstitch_masks
         )
+
+    if interpolation:
+        if not pixel_size or not z_step:
+            print("Cannot determine anisotropy for interpolation. Defaulting to anisotropy = 2. Result might not be "
+                  "accurate.")
+            anisotropy = 2
+        else:
+            anisotropy = int(round(z_step/pixel_size))
+        if anisotropy > 1:
+            if verbose:
+                time_start = time.time()
+            cellstitch_masks_interp = full_interpolate(
+                cellstitch_masks,
+                anisotropy=anisotropy,
+                n_jobs=n_jobs,
+                verbose=verbose,
+            )
+            if verbose:
+                print("Total time to interpolate:", time.time() - time_start)
+            if output_masks:
+                tifffile.imwrite(
+                    os.path.join(output_path, "cellstitch_masks_interpolated.tif"), cellstitch_masks_interp
+                )
+            return cellstitch_masks, cellstitch_masks_interp
+        else:
+            print("Image data is already isotropic. Skipping interpolation.")
 
     return cellstitch_masks
