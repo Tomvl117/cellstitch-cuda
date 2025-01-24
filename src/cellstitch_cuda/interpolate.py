@@ -286,7 +286,7 @@ def process_region(label, label_slice, cell_mask, dist, anisotropy):
     return interps, list(coordinates)
 
 
-def interp_layers(source_target, dist="sqeuclidean", anisotropy=2):
+def interp_layers(source_target, dist="sqeuclidean", anisotropy=2, n_jobs=-1):
     """
     Interpolating adjacent z-layers using bounding boxes after contouring
     """
@@ -354,7 +354,7 @@ def interp_layers(source_target, dist="sqeuclidean", anisotropy=2):
     regions = regionprops(source_target)
 
     # Parallel process bounding boxes
-    results = Parallel(n_jobs=-1)(
+    results = Parallel(n_jobs=n_jobs)(
         delayed(process_region)(
             region.label,
             region.slice,
@@ -386,7 +386,7 @@ def interp_layers(source_target, dist="sqeuclidean", anisotropy=2):
     return interp_masks
 
 
-def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
+def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", n_jobs=-1, verbose=False):
     """
     Interpolating between all adjacent z-layers
 
@@ -429,7 +429,7 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", verbose=False):
             print("Interpolating layer {} & {}...".format(i, i + 1))
         source_target = masks[i : i + 2].copy()
         interps = interp_layers(
-            source_target, dist=dist, anisotropy=anisotropy
+            source_target, dist=dist, anisotropy=anisotropy, n_jobs=n_jobs
         )
         interp_masks[idx : idx + anisotropy + 1] = interps
         idx += anisotropy
