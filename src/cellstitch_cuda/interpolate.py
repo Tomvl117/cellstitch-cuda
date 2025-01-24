@@ -199,29 +199,12 @@ def connect(coord1, coord2, mask):
     if x_offset**2 + y_offset**2 <= 2:
         return
 
-    diag_length = min(abs(x_offset), abs(y_offset))
+    # Determine the number of steps to connect the points
+    steps = max(abs(x_offset), abs(y_offset))
+    x_values = np.linspace(x1, x2, steps + 1, dtype=np.int32)
+    y_values = np.linspace(y1, y2, steps + 1, dtype=np.int32)
 
-    # initialize at coord1
-    added_x, added_y = x1, y1
-
-    # first, add diagonal pixels
-    for i in range(1, diag_length + 1):
-        added_x = x1 + i * np.sign(x_offset)
-        added_y = y1 + i * np.sign(y_offset)
-
-        mask[added_x, added_y] = 1
-
-        # need to walk vertically
-    if added_x == x2 and added_y != y2:
-        offset = abs(added_y - y2)
-        for i in range(1, offset + 1):
-            mask[added_x, added_y + i * np.sign(y_offset)] = 1
-
-            # or, now need to walk horizonally
-    if added_y == y2 and added_x != x2:
-        offset = abs(added_x - x2)
-        for i in range(1, offset + 1):
-            mask[added_x + i * np.sign(x_offset), added_y] = 1
+    mask[x_values, y_values] = 1
 
 
 def calc_angles(source_point, target_points, eps=1e-20):
