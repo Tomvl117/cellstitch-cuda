@@ -132,7 +132,7 @@ volumetric_masks = full_stitch(yx_masks, yz_masks, xz_masks)
 * **n_jobs**: Number of threads used. Set n_jobs to 1 for debugging parallel processing tasks. Default -1
 * **verbose**: Verbosity. Default False
 
-#### cellstitch_cuda.interpolation.full_interpolate()
+#### cellstitch_cuda.interpolate.full_interpolate()
 `full_interpolate()` takes the following arguments:
 * **masks**: numpy.ndarray with stitched XY masks
 * **anisotropy**: The ratio (or mismatch) between the Z and XY sampling rate, calculated as
