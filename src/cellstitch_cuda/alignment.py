@@ -101,7 +101,7 @@ class FramePair:
         soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
-        matched_indices = cp.argmin(C, axis=1)  # Use minimum cost instead of max plan probability
+        matched_indices = plan.argmax(axis=1)  # Use minimum cost instead of max plan probability
         soft_matching[cp.arange(n), matched_indices] = 1
 
         stitched_mask1 = cp.zeros_like(mask1)
@@ -109,7 +109,7 @@ class FramePair:
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
             filtered_C = cp.where(
-                matching_filter > 0, C[:, lbl1_index], cp.inf
+                matching_filter == 0, cp.inf, C[:, lbl1_index]
             )  # ignore the non-matched cells
 
             lbl0_index = cp.argmin(
@@ -154,8 +154,8 @@ def _label_overlap_cupy(x, y):
         Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
     """
     # put label arrays into standard form then flatten them
-    x = cp.asarray(x.ravel())
-    y = cp.asarray(y.ravel())
+    x = x.ravel()
+    y = y.ravel()
     xmax = int(x.max())
     ymax = int(y.max())
 
