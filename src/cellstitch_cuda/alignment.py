@@ -4,6 +4,7 @@ from skimage import color
 import matplotlib.pyplot as plt
 
 from cellstitch_cuda.frame import *
+from cellstitch_cuda.interpolate import get_mask_center_cupy
 import time
 
 
@@ -118,19 +119,45 @@ class FramePair:
 
             lbl0, lbl1 = int(lbls0[lbl0_index]), int(lbls1[lbl1_index])
 
+            filter_1 = mask1 == lbl1
+
+            # In case the minimum cost is 1 (if unchecked, causes stitching of labels that should not be connected)
+            if lbl0 != 0 and filtered_C[lbl0_index] == 1:
+                filter_0 = cp.asarray(self.frame0.mask == lbl0)
+
+                # Check overlap first
+                if not cp.any(filter_0 & filter_1):
+                    # Get label centers
+                    center_0 = get_mask_center_cupy(filter_0).astype(int)
+                    center_1 = get_mask_center_cupy(filter_1).astype(int)
+
+                    # Calculate distance between centers
+                    dist = center_0 - center_1
+                    dist = cp.linalg.norm(dist).astype(int).item()
+
+                    area0 = cp.sum(filter_0)
+                    area1 = cp.sum(filter_1)
+                    radius0 = cp.sqrt(area0 / cp.pi).astype(int)
+                    radius1 = cp.sqrt(area1 / cp.pi).astype(int)
+                    cell_radius = max(radius0.item(), radius1.item())  # Largest radius
+
+                    if dist > 4 * cell_radius:
+                        # If the label is too far away, do not stitch
+                        lbl0 = 0
+
             n_not_stitch_pixel = (
-                yz_not_stitched[mask1 == lbl1].sum() / 2
-                + xz_not_stitched[mask1 == lbl1].sum() / 2
+                yz_not_stitched[filter_1].sum() / 2
+                + xz_not_stitched[filter_1].sum() / 2
             )
             stitch_cell = (
-                n_not_stitch_pixel <= (1 - p_stitching_votes) * (mask1 == lbl1).sum()
+                n_not_stitch_pixel <= (1 - p_stitching_votes) * filter_1.sum()
             )
 
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
-                stitched_mask1[mask1 == lbl1] = lbl0
+                stitched_mask1[filter_1] = lbl0
             else:
                 self.max_lbl += 1
-                stitched_mask1[mask1 == lbl1] = self.max_lbl  # create a new label
+                stitched_mask1[filter_1] = self.max_lbl  # create a new label
 
         if verbose:
             print("Time to stitch: ", time.time() - time_start)

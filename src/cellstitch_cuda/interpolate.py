@@ -1,6 +1,7 @@
 import ot
 import ot.plot
 import numpy as np
+import cupy as cp
 import fill_voids
 import time
 
@@ -257,6 +258,29 @@ def connect_boundary(coords, size, lbl=1):
     return mask
 
 
+def get_mask_center(mask):
+    coordx = np.round(np.nonzero(mask)[0].sum() / mask.sum()).astype(np.uint16)
+    coordy = np.round(np.nonzero(mask)[1].sum() / mask.sum()).astype(np.uint16)
+
+    return coordx, coordy
+
+
+def get_mask_center_cupy(mask):
+
+    if cp.sum(mask) == 0:
+        return cp.zeros(2, dtype=cp.uint16)
+
+    # Get indices and calculate centroids
+    x_indices = cp.nonzero(mask)[0]
+    y_indices = cp.nonzero(mask)[1]
+    count = cp.sum(mask)
+
+    coordx = cp.round(x_indices.sum() / count).astype(cp.uint16)
+    coordy = cp.round(y_indices.sum() / count).astype(cp.uint16)
+
+    return cp.array([coordx, coordy])
+
+
 # -----------------------------
 # Core Interpolation functions
 # -----------------------------
@@ -328,10 +352,6 @@ def interp_layers(source_target, dist="sqeuclidean", anisotropy=2, n_jobs=-1):
             np.logical_and(source_mask, target_mask).sum() > 0
         ):
             return np.zeros(shape)
-        get_mask_center = lambda x: (
-            np.round(np.nonzero(x)[0].sum() / x.sum()).astype(np.uint16),
-            np.round(np.nonzero(x)[1].sum() / x.sum()).astype(np.uint16),
-        )
         for lbl in get_lbls(source_contour):
             yc, xc = _dilation(get_mask_center(source_mask == lbl), source_mask.shape)
             target_dummy[yc, xc] = lbl

@@ -19,7 +19,7 @@ def process_slice(i, slc, masks):
 def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
     """Fills holes in masks (2D/3D) and discards masks smaller than min_size.
 
-    This function fills holes in each mask using scipy.ndimage.morphology.binary_fill_holes.
+    This function fills holes in each mask using fill_voids.fill.
     It also removes masks that are smaller than the specified min_size.
 
     Adapted from CellPose: https://github.com/MouseLand/cellpose
