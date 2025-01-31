@@ -27,7 +27,7 @@ dependencies = [
     "numpy<2.0.0",
     "cupy-cuda12x",
     "joblib",
-    "fill-void",
+    "fill-voids",
 ]
 requires-python = ">=3.9, <3.12"
 urls = { "Homepage" = "https://github.com/Tomvl117/cellstitch-cuda" }
