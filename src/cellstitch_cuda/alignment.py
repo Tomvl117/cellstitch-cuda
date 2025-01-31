@@ -81,7 +81,7 @@ class FramePair:
         return C
 
     def stitch(
-        self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75, verbose=False
+        self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75, radii_limit=4, verbose=False
     ):
         """Stitch frame1 using frame 0."""
 
@@ -141,7 +141,7 @@ class FramePair:
                     radius1 = cp.sqrt(area1 / cp.pi).astype(int)
                     cell_radius = max(radius0.item(), radius1.item())  # Largest radius
 
-                    if dist > 4 * cell_radius:
+                    if dist > radii_limit * cell_radius:
                         # If the label is too far away, do not stitch
                         lbl0 = 0
 
