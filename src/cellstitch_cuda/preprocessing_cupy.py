@@ -26,6 +26,8 @@ def downscale_mask(masks, pixel=None, z_res=None):
 
 
 def upscale_img(images, pixel=None, z_res=None):
+    dtype = images.dtype
+
     if not pixel:
         pixel = 1
     if not z_res:
@@ -39,15 +41,16 @@ def upscale_img(images, pixel=None, z_res=None):
     )  # Pre-zoom for InstanSeg (expected pixel size = 0.5)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    zoomed = []
-    for ch in images:  # CiZk
-        ch = zoom(cp.asarray(ch), zoom_factors, order=order).get()
+    shape = (images.shape[0], ) + tuple((np.array(images[0].shape) * np.array(zoom_factors)).astype(int))
+    zoomed = np.zeros(shape=shape, dtype=dtype)
+    for i, ch in enumerate(images):  # CiZk
+        ch = zoom(cp.asarray(ch), zoom_factors, order=order, output=dtype).get()
         cp._default_memory_pool.free_all_blocks()
-        zoomed.append(ch)
+        zoomed[i] = ch
 
     cp._default_memory_pool.free_all_blocks()
 
-    return np.stack(zoomed)
+    return zoomed
 
 
 def histogram_correct(images, match: str = "first"):
