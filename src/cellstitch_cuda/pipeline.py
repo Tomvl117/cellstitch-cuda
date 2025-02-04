@@ -323,11 +323,13 @@ def cellstitch_cuda(
     if verbose:
         print("Segmenting XZ planes (Y-axis).")
     transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
+    del img
     transposed_img = upscale_img(
         transposed_img, pixel_size, z_step
     )  # Preprocess XZ planes
     cp._default_memory_pool.free_all_blocks()
     xz_masks = segmentation(transposed_img, model, seg_mode)
+    del transposed_img
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
     xz_masks = downscale_mask(xz_masks, pixel_size, z_step).transpose(
@@ -338,7 +340,7 @@ def cellstitch_cuda(
         tifffile.imwrite(os.path.join(output_path, "xz_masks.tif"), xz_masks)
 
     # Memory cleanup
-    del model, img, transposed_img
+    del model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
 
