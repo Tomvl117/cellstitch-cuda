@@ -41,7 +41,7 @@ def upscale_img(images, pixel=None, z_res=None):
     )  # Pre-zoom for InstanSeg (expected pixel size = 0.5)
     order = 1  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
-    shape = (images.shape[0], ) + tuple((np.array(images[0].shape) * np.array(zoom_factors)).astype(int))
+    shape = (images.shape[0], ) + tuple((np.array(images[0].shape) * np.array(zoom_factors)).round().astype(int))
     zoomed = np.zeros(shape=shape, dtype=dtype)
     for i, ch in enumerate(images):  # CiZk
         ch = zoom(cp.asarray(ch), zoom_factors, order=order, output=dtype).get()
