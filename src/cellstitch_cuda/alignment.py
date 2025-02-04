@@ -2,6 +2,7 @@ import ot
 import cupyx
 from skimage import color
 import matplotlib.pyplot as plt
+import numpy as np
 
 from cellstitch_cuda.frame import *
 from cellstitch_cuda.interpolate import get_mask_center_cupy
@@ -52,13 +53,15 @@ class FramePair:
         sizes1 = cp.asarray(counts1)
 
         # convert to distribution to compute transport plan
-        dist0 = sizes0 / cp.sum(sizes0)
-        dist1 = sizes1 / cp.sum(sizes1)
+        dist0 = (sizes0 / cp.sum(sizes0)).get()
+        dist1 = (sizes1 / cp.sum(sizes1)).get()
+
+        cp._default_memory_pool.free_all_blocks()
 
         # compute transportation plan
         plan = ot.emd(dist0, dist1, C)
 
-        return plan, mask1
+        return plan
 
     def get_cost_matrix(self, overlap, lbls0, lbls1):
         """
@@ -72,11 +75,12 @@ class FramePair:
         lbl0_indices, lbl1_indices = cp.meshgrid(lbls0, lbls1, indexing="ij")
 
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
+        cp._default_memory_pool.free_all_blocks()
         scaling_factors = overlap_sizes / (
             sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes + 1e-6
         )
 
-        C = 1 - scaling_factors
+        C = (1 - scaling_factors).get()
 
         return C
 
@@ -98,7 +102,7 @@ class FramePair:
 
         cp._default_memory_pool.free_all_blocks()
 
-        plan, mask1 = self.get_plan(C)
+        plan = self.get_plan(C)
 
         cp._default_memory_pool.free_all_blocks()
 
@@ -110,15 +114,17 @@ class FramePair:
         matched_indices = plan.argmax(axis=1)  # Use minimum cost instead of max plan probability
         soft_matching[cp.arange(n), matched_indices] = 1
 
+        mask1 = cp.asarray(self.frame1.mask)
+
         stitched_mask1 = cp.zeros_like(mask1)
         for lbl1_index in range(1, m):
             # find the cell with the lowest cost (i.e. lowest scaled distance)
             matching_filter = soft_matching[:, lbl1_index]
-            filtered_C = cp.where(
-                matching_filter == 0, cp.inf, C[:, lbl1_index]
+            filtered_C = np.where(
+                (matching_filter == 0).get(), np.inf, C[:, lbl1_index]
             )  # ignore the non-matched cells
 
-            lbl0_index = cp.argmin(
+            lbl0_index = np.argmin(
                 filtered_C
             )  # this is the cell0 we will attempt to relabel cell1 with
 
@@ -167,7 +173,7 @@ class FramePair:
         if verbose:
             print("Time to stitch: ", time.time() - time_start)
 
-        self.frame1 = Frame(stitched_mask1)
+        self.frame1 = Frame(stitched_mask1.get())
 
 
 def _label_overlap_cupy(x, y):

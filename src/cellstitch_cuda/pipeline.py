@@ -118,7 +118,7 @@ def full_stitch(
                 xy_masks[prev_index], xy_masks[curr_index], max_lbl=xy_masks.max()
             )
             fp.stitch(yz_not_stitched, xz_not_stitched, verbose=verbose)
-            xy_masks[curr_index] = fp.frame1.mask.get()
+            xy_masks[curr_index] = fp.frame1.mask
 
             cp._default_memory_pool.free_all_blocks()
 
