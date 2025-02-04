@@ -95,7 +95,12 @@ class FramePair:
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
+
+        cp._default_memory_pool.free_all_blocks()
+
         plan, mask1 = self.get_plan(C)
+
+        cp._default_memory_pool.free_all_blocks()
 
         # get a soft matching from plan
         n, m = plan.shape

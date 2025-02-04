@@ -101,6 +101,8 @@ def full_stitch(
                     % (curr_index, prev_index)
                 )
 
+            cp._default_memory_pool.free_all_blocks()
+
             yz_not_stitched = cp.asarray(
                 (yz_masks[prev_index] != 0)
                 * (yz_masks[curr_index] != 0)
@@ -117,6 +119,8 @@ def full_stitch(
             )
             fp.stitch(yz_not_stitched, xz_not_stitched, verbose=verbose)
             xy_masks[curr_index] = fp.frame1.mask.get()
+
+            cp._default_memory_pool.free_all_blocks()
 
             prev_index = curr_index
             curr_index += 1
