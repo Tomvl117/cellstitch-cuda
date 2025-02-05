@@ -71,30 +71,19 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
 
 
 def filter_nuclei_cells(volumetric_masks, nuclei_masks):
+    """Filter nuclei cells
 
-    vram = torch.cuda.mem_get_info()[0]
-    if volumetric_masks.size*3*8 < vram:
-        # GPU approach
-        # Convert nuclei masks to a boolean array to make the later comparison easier
-        nuclei_masks = cp.asarray(nuclei_masks.astype(bool))
-        volumetric_masks = cp.asarray(volumetric_masks)
+    Filters cell labels that are positive for a nuclear label. First, we find what masks are present in the 3D labels
+    when we filter with a boolean nuclei filter, then mask the 3D labels that are not found in that filtered array.
+    """
 
-        nuclear_cells = cp.zeros_like(volumetric_masks)
+    # Convert nuclei masks to a boolean array to make the later comparison easier
+    nuclei_masks = nuclei_masks.astype(bool)
 
-        unique_labels = cp.unique(volumetric_masks[nuclei_masks])
+    unique_labels = np.unique(volumetric_masks[nuclei_masks])
+    unique_labels = unique_labels[unique_labels != 0]
 
-        for label_id in unique_labels[unique_labels != 0]:
-            nuclear_cells[volumetric_masks == label_id] = label_id
+    # Multiply the original labels by a mask of (volumetric labels that are found in unique_labels) (= a boolean mask)
+    volumetric_masks = volumetric_masks * np.isin(volumetric_masks, unique_labels)
 
-        return nuclear_cells.get()
-
-    else:
-        # CPU approach
-        # Convert nuclei masks to a boolean array to make the later comparison easier
-        nuclei_masks = nuclei_masks.astype(bool)
-        unique_labels = np.unique(volumetric_masks[nuclei_masks])
-        unique_labels = unique_labels[unique_labels != 0]
-
-        volumetric_masks = volumetric_masks * np.isin(volumetric_masks, unique_labels)
-
-        return volumetric_masks
+    return volumetric_masks
