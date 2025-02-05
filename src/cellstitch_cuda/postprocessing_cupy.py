@@ -1,3 +1,4 @@
+import torch
 import cupy as cp
 import numpy as np
 import fill_voids
@@ -71,15 +72,33 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
 
 def filter_nuclei_cells(volumetric_masks, nuclei_masks):
 
-    # Convert nuclei masks to a boolean array to make the later comparison easier
-    nuclei_masks = cp.asarray(nuclei_masks.astype(bool))
-    volumetric_masks = cp.asarray(volumetric_masks)
+    vram = torch.cuda.mem_get_info()[0]
+    if volumetric_masks.size*3*8 > vram:
+        # GPU approach
+        # Convert nuclei masks to a boolean array to make the later comparison easier
+        nuclei_masks = cp.asarray(nuclei_masks.astype(bool))
+        volumetric_masks = cp.asarray(volumetric_masks)
 
-    nuclear_cells = cp.zeros_like(volumetric_masks)
+        nuclear_cells = cp.zeros_like(volumetric_masks)
 
-    unique_labels = cp.unique(volumetric_masks[nuclei_masks])
+        unique_labels = cp.unique(volumetric_masks[nuclei_masks])
 
-    for label_id in unique_labels[unique_labels != 0]:
-        nuclear_cells[volumetric_masks == label_id] = label_id
+        for label_id in unique_labels[unique_labels != 0]:
+            nuclear_cells[volumetric_masks == label_id] = label_id
 
-    return nuclear_cells.get()
+        return nuclear_cells.get()
+
+    else:
+        # CPU approach
+        # Convert nuclei masks to a boolean array to make the later comparison easier
+        nuclei_masks = nuclei_masks.astype(bool)
+
+        nuclear_cells = np.zeros_like(volumetric_masks)
+
+        unique_labels = np.unique(volumetric_masks[nuclei_masks])
+
+        for label_id in unique_labels[unique_labels != 0]:
+            nuclear_cells[volumetric_masks == label_id] = label_id
+
+        return nuclear_cells
+
