@@ -90,15 +90,9 @@ def filter_nuclei_cells(volumetric_masks, nuclei_masks):
 
     else:
         # CPU approach
-        # Convert nuclei masks to a boolean array to make the later comparison easier
-        nuclei_masks = nuclei_masks.astype(bool)
-
-        nuclear_cells = np.zeros_like(volumetric_masks)
-
         unique_labels = np.unique(volumetric_masks[nuclei_masks])
+        unique_labels = unique_labels[unique_labels != 0]
 
-        for label_id in unique_labels[unique_labels != 0]:
-            nuclear_cells[volumetric_masks == label_id] = label_id
+        volumetric_masks = volumetric_masks * np.isin(volumetric_masks, unique_labels)
 
-        return nuclear_cells
-
+        return volumetric_masks
