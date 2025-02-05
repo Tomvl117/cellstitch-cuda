@@ -73,7 +73,7 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
 def filter_nuclei_cells(volumetric_masks, nuclei_masks):
 
     vram = torch.cuda.mem_get_info()[0]
-    if volumetric_masks.size*3*8 > vram:
+    if volumetric_masks.size*3*8 < vram:
         # GPU approach
         # Convert nuclei masks to a boolean array to make the later comparison easier
         nuclei_masks = cp.asarray(nuclei_masks.astype(bool))
