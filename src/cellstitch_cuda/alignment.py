@@ -77,7 +77,7 @@ class FramePair:
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
         cp._default_memory_pool.free_all_blocks()
         scaling_factors = overlap_sizes / (
-            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes + 1e-6
+            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes
         )
 
         C = (1 - scaling_factors).get()

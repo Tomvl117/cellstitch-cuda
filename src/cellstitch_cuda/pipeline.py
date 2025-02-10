@@ -17,6 +17,8 @@ def relabel_layer(masks, z, lbls):
     """
     Relabel the label in LBLS in layer Z of MASKS.
     """
+    cp._default_memory_pool.free_all_blocks()
+
     layer = masks[z]
     if z != 0:
         reference_layer = masks[z - 1]
@@ -24,15 +26,22 @@ def relabel_layer(masks, z, lbls):
         reference_layer = masks[z + 1]
 
     overlap = _label_overlap_cupy(reference_layer, layer)
+    if len(lbls) == 0:
+        return
 
-    for lbl in lbls:
-        lbl0 = cp.argmax(overlap[:, lbl])
-        layer[layer == lbl] = lbl0
+    cp._default_memory_pool.free_all_blocks()
+
+    max_indices = cp.argmax(overlap[:, lbls], axis=0)
+    current_max = int(layer.max())
+    remap = cp.arange(current_max + 1, dtype=layer.dtype)
+    remap[lbls] = max_indices
+    masks[z] = remap[layer]
 
 
 def overseg_correction(masks):
     masks_cp = cp.asarray(masks)
     lbls = cp.unique(masks_cp)[1:]
+    cp._default_memory_pool.free_all_blocks()
 
     # get a list of labels that need to be corrected
     layers_lbls = {}
