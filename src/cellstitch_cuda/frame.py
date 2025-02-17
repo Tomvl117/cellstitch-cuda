@@ -4,7 +4,7 @@ import cupy as cp
 class Frame:
     def __init__(self, mask):
         """A container to the mask with useful features."""
-        self.mask = mask
+        self.mask = cp.asarray(mask, dtype=cp.uint32)
 
     def get_lbls(self):
         return cp.unique(self.mask)

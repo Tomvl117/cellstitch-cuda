@@ -173,7 +173,7 @@ class FramePair:
         if verbose:
             print("Time to stitch: ", time.time() - time_start)
 
-        self.frame1 = Frame(stitched_mask1.get())
+        self.frame1 = Frame(stitched_mask1)
 
 
 def _label_overlap_cupy(x, y):
