@@ -80,7 +80,7 @@ class FramePair:
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
         cp._default_memory_pool.free_all_blocks()
         scaling_factors = overlap_sizes / (
-            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes
+            sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes + 1e-6
         )
 
         C = (1 - scaling_factors)
@@ -98,9 +98,7 @@ class FramePair:
         lbls1 = self.frame1.get_lbls()  # Get unique label IDs
 
         # get sizes
-        overlap = _label_overlap_cupy(self.frame0.mask, self.frame1.mask).get()
-
-        cp._default_memory_pool.free_all_blocks()
+        overlap = _label_overlap(self.frame0.mask, self.frame1.mask)
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
@@ -181,7 +179,7 @@ class FramePair:
         self.frame1 = Frame(stitched_mask1)
 
 
-def _label_overlap_cupy(x, y):
+def _label_overlap(x, y):
     """Fast function to get pixel overlaps between masks in x and y.
 
     Args:
@@ -197,14 +195,13 @@ def _label_overlap_cupy(x, y):
         Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
     """
     # put label arrays into standard form then flatten them
-    x = x.ravel()
-    y = y.ravel()
+    x = x.ravel().get()
+    y = y.ravel().get()
     xmax = int(x.max())
     ymax = int(y.max())
 
-    # preallocate a "contact map" matrix
-    overlap = cp.zeros((1 + xmax, 1 + ymax), dtype=cp.uint)
+    overlap = np.zeros((1 + xmax, 1 + ymax), dtype=np.uint)
 
-    cupyx.scatter_add(overlap, (x, y), 1)
+    np.add.at(overlap, (x, y), 1)
 
     return overlap
