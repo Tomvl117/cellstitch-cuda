@@ -68,11 +68,14 @@ class FramePair:
         Return the cost matrix between cells in the two frame defined by IoU.
         """
 
-        sizes0 = cp.sum(overlap, axis=1)
-        sizes1 = cp.sum(overlap, axis=0)
+        sizes0 = np.sum(overlap, axis=1)
+        sizes1 = np.sum(overlap, axis=0)
+
+        lbls0 = lbls0.get()
+        lbls1 = lbls1.get()
 
         # Create a meshgrid for vectorized operations
-        lbl0_indices, lbl1_indices = cp.meshgrid(lbls0, lbls1, indexing="ij")
+        lbl0_indices, lbl1_indices = np.meshgrid(lbls0, lbls1, indexing="ij")
 
         overlap_sizes = overlap[lbl0_indices, lbl1_indices]
         cp._default_memory_pool.free_all_blocks()
@@ -80,7 +83,7 @@ class FramePair:
             sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes
         )
 
-        C = (1 - scaling_factors).get()
+        C = (1 - scaling_factors)
 
         return C
 
@@ -95,7 +98,9 @@ class FramePair:
         lbls1 = self.frame1.get_lbls()  # Get unique label IDs
 
         # get sizes
-        overlap = _label_overlap_cupy(self.frame0.mask, self.frame1.mask)
+        overlap = _label_overlap_cupy(self.frame0.mask, self.frame1.mask).get()
+
+        cp._default_memory_pool.free_all_blocks()
 
         # compute matching
         C = self.get_cost_matrix(overlap, lbls0, lbls1)
