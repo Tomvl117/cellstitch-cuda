@@ -195,8 +195,14 @@ def _label_overlap(x, y):
         Copyright © 2023 Howard Hughes Medical Institute, Authored by Carsen Stringer and Marius Pachitariu.
     """
     # put label arrays into standard form then flatten them
-    x = x.ravel().get()
-    y = y.ravel().get()
+    x = x.ravel()
+    y = y.ravel()
+
+    if isinstance(x, cp.ndarray):
+        x = x.get()
+    if isinstance(y, cp.ndarray):
+        y = y.get()
+
     xmax = int(x.max())
     ymax = int(y.max())
 
