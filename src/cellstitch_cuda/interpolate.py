@@ -430,6 +430,8 @@ def full_interpolate(masks, anisotropy=2, dist="sqeuclidean", n_jobs=-1, verbose
         masks = masks.astype("uint8")
     elif masks.max() < 65536:
         masks = masks.astype("uint16")
+    else:
+        masks = masks.astype("uint32")
 
     dtype = masks.dtype
 
