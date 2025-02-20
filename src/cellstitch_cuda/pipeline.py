@@ -1,5 +1,6 @@
 import tifffile
 import os
+from skimage.measure import regionprops
 
 from cellstitch_cuda.alignment import _label_overlap
 from instanseg import InstanSeg
@@ -26,31 +27,24 @@ def relabel_layer(masks, z, lbls):
     overlap = _label_overlap(reference_layer, layer)
 
     for lbl in lbls:
-        lbl0 = cp.argmax(overlap[:, lbl])
+        lbl0 = np.argmax(overlap[:, lbl])
         layer[layer == lbl] = lbl0
 
 
 def overseg_correction(masks):
-    masks_cp = cp.asarray(masks)
-    lbls = cp.unique(masks_cp)[1:]
 
     # get a list of labels that need to be corrected
     layers_lbls = {}
 
-    for lbl in lbls:
-        existing_layers = cp.any(masks_cp == lbl, axis=(1, 2))
-        depth = cp.sum(existing_layers)
+    regions = regionprops(masks)
 
-        if depth == 1:
-            z = int(cp.where(existing_layers)[0][0])
-            layers_lbls.setdefault(z, []).append(lbl)
+    for region in regions:
+        if region.bbox[3] - region.bbox[0] == 1:
+            layers_lbls.setdefault(region.bbox[0], []).append(region.label)
 
     for z, lbls in layers_lbls.items():
-        relabel_layer(masks_cp, z, lbls)
+        relabel_layer(masks, z, lbls)
         cp._default_memory_pool.free_all_blocks()
-
-    masks = masks_cp.get()
-    cp._default_memory_pool.free_all_blocks()
 
     return masks
 
