@@ -203,11 +203,11 @@ def _label_overlap(x, y):
     if isinstance(y, cp.ndarray):
         y = y.get()
 
-    xmax = int(x.max())
-    ymax = int(y.max())
+    overlap = np.zeros((1 + x.max(), 1 + y.max()), dtype=np.uint)
 
-    overlap = np.zeros((1 + xmax, 1 + ymax), dtype=np.uint)
-
+    # Count overlaps using vectorized operations
+    # `np.add.at` adds 1 to the `overlap` matrix at the positions specified by the pairs of labels in `x` and `y`.
+    # For example, if `x[i] = A` and `y[i] = B`, it increments `overlap[A, B]` by 1.
     np.add.at(overlap, (x, y), 1)
 
     return overlap
