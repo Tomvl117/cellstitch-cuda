@@ -14,6 +14,24 @@ from cellstitch_cuda.alignment import *
 from cellstitch_cuda.preprocessing_cupy import *
 
 
+def split_label(region, limit, max_lbl):
+
+    mask = np.zeros(shape=region.image.shape, dtype=np.int32)
+
+    area = 0
+    label = region.label
+
+    for z, img in enumerate(region.image):
+        area += np.sum(img)
+        mask[z] = img * label
+        if area >= limit:
+            max_lbl += 1
+            label = max_lbl
+            area = 0
+
+    return mask
+
+
 def relabel_layer(masks, z, lbls):
     """
     Relabel the label in LBLS in layer Z of MASKS.
@@ -31,20 +49,36 @@ def relabel_layer(masks, z, lbls):
         layer[layer == lbl] = lbl0
 
 
-def overseg_correction(masks):
+def correction(masks):
+    """Correct over- and undersegmentation
+
+    This function first attempts to stitch any masks that are only 1 plane thick, then goes over the labels again to
+    ensure that masks are not too large.
+
+    The assumption for undersegmentation correction is that, on average, the labels are of the correct size. For labels
+    that have a volume > 3 standard deviations away from the mean, they will be split into appropriate sizes. Currently,
+    this split is a hard cutoff in z.
+    """
 
     # get a list of labels that need to be corrected
     layers_lbls = {}
 
     regions = regionprops(masks)
 
+    area = []
     for region in regions:
-        if region.bbox[3] - region.bbox[0] == 1:
-            layers_lbls.setdefault(region.bbox[0], []).append(region.label)
+        area.append(region.num_pixels)
+    area = np.array(area)
 
-    for z, lbls in layers_lbls.items():
-        relabel_layer(masks, z, lbls)
-        cp._default_memory_pool.free_all_blocks()
+    mean_area = np.mean(area)
+    std_dev = np.std(area, ddof=1)
+
+    size_limit = int(round(mean_area + 3 * std_dev))
+
+    for region in regions:
+        if region.num_pixels > size_limit:
+            mask = split_label(region, int(round(mean_area)), masks.max())
+            np.where(masks[region.slice] == region.label, mask, masks[region.slice])
 
     return masks
 
@@ -142,10 +176,10 @@ def full_stitch(
 
     time_start = time.time()
 
-    xy_masks = overseg_correction(xy_masks)
+    xy_masks = correction(xy_masks)
 
     if verbose:
-        print("Time to correct oversegmentation: ", time.time() - time_start)
+        print("Time to correct over- and undersegmentation: ", time.time() - time_start)
 
     return xy_masks
 
