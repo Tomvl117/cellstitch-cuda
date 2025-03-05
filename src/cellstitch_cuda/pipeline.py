@@ -95,7 +95,7 @@ def correction(masks):
     for region in regions:
         if region.num_pixels > size_limit:
             mask = split_label(region, int(round(mean_area)), masks.max())
-            np.where(masks[region.slice] == region.label, mask, masks[region.slice])
+            masks[region.slice] = np.where(masks[region.slice] == region.label, mask, masks[region.slice])
 
     return masks
 
