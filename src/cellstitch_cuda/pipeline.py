@@ -1,6 +1,9 @@
 import tifffile
 import os
 from skimage.measure import regionprops
+from skimage.segmentation import watershed
+from skimage.feature import peak_local_max
+from scipy import ndimage as ndi
 
 from cellstitch_cuda.alignment import _label_overlap
 from instanseg import InstanSeg
@@ -16,18 +19,23 @@ from cellstitch_cuda.preprocessing_cupy import *
 
 def split_label(region, limit, max_lbl):
 
-    mask = np.zeros(shape=region.image.shape, dtype=np.int32)
+    image = region.image
 
-    area = 0
-    label = region.label
+    n = int(round(region.num_pixels / limit))
 
-    for z, img in enumerate(region.image):
-        area += np.sum(img)
-        mask[z] = img * label
-        if area >= limit:
-            max_lbl += 1
-            label = max_lbl
-            area = 0
+    a = int(round(image.shape[0]/n))
+    b = image.shape[1]
+    c = image.shape[2]
+
+    distance = ndi.distance_transform_edt(image)
+    max_coords = peak_local_max(distance, labels=image, footprint=np.ones((a, b, c)))
+    local_maxima = np.zeros_like(image, dtype=bool)
+    local_maxima[tuple(max_coords.T)] = True
+    markers = ndi.label(local_maxima)[0]
+
+    labels = watershed(-distance, markers, mask=image)
+
+    mask = np.where(labels > 1, labels + max_lbl - 1, region.label) * image
 
     return mask
 
@@ -56,12 +64,21 @@ def correction(masks):
     ensure that masks are not too large.
 
     The assumption for undersegmentation correction is that, on average, the labels are of the correct size. For labels
-    that have a volume > 3 standard deviations away from the mean, they will be split into appropriate sizes. Currently,
-    this split is a hard cutoff in z.
+    that have a volume > 3 standard deviations away from the mean, they will be split into appropriate sizes.
     """
 
     # get a list of labels that need to be corrected
-    layers_lbls = {}
+    # layers_lbls = {}
+    #
+    # regions = regionprops(masks)
+    #
+    # for region in regions:
+    #     if region.bbox[3] - region.bbox[0] == 1:
+    #         layers_lbls.setdefault(region.bbox[0], []).append(region.label)
+    #
+    # for z, lbls in layers_lbls.items():
+    #     relabel_layer(masks, z, lbls)
+    #     cp._default_memory_pool.free_all_blocks()
 
     regions = regionprops(masks)
 
