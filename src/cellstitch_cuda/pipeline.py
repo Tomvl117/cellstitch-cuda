@@ -68,17 +68,17 @@ def correction(masks):
     """
 
     # get a list of labels that need to be corrected
-    # layers_lbls = {}
-    #
-    # regions = regionprops(masks)
-    #
-    # for region in regions:
-    #     if region.bbox[3] - region.bbox[0] == 1:
-    #         layers_lbls.setdefault(region.bbox[0], []).append(region.label)
-    #
-    # for z, lbls in layers_lbls.items():
-    #     relabel_layer(masks, z, lbls)
-    #     cp._default_memory_pool.free_all_blocks()
+    layers_lbls = {}
+
+    regions = regionprops(masks)
+
+    for region in regions:
+        if region.bbox[3] - region.bbox[0] == 1:
+            layers_lbls.setdefault(region.bbox[0], []).append(region.label)
+
+    for z, lbls in layers_lbls.items():
+        relabel_layer(masks, z, lbls)
+        cp._default_memory_pool.free_all_blocks()
 
     regions = regionprops(masks)
 
