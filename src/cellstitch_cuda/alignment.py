@@ -83,12 +83,17 @@ class FramePair:
             sizes0[lbl0_indices] + sizes1[lbl1_indices] - overlap_sizes + 1e-6
         )
 
-        C = (1 - scaling_factors)
+        C = 1 - scaling_factors
 
         return C
 
     def stitch(
-        self, yz_not_stitched, xz_not_stitched, p_stitching_votes=0.75, radii_limit=4, verbose=False
+        self,
+        yz_not_stitched,
+        xz_not_stitched,
+        p_stitching_votes=0.75,
+        radii_limit=4,
+        verbose=False,
     ):
         """Stitch frame1 using frame 0."""
 
@@ -114,7 +119,9 @@ class FramePair:
         soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
-        matched_indices = plan.argmax(axis=1)  # Use minimum cost instead of max plan probability
+        matched_indices = plan.argmax(
+            axis=1
+        )
         soft_matching[cp.arange(n), matched_indices] = 1
 
         mask1 = cp.asarray(self.frame1.mask)
@@ -163,9 +170,7 @@ class FramePair:
                 yz_not_stitched[filter_1].sum() / 2
                 + xz_not_stitched[filter_1].sum() / 2
             )
-            stitch_cell = (
-                n_not_stitch_pixel <= (1 - p_stitching_votes) * filter_1.sum()
-            )
+            stitch_cell = n_not_stitch_pixel <= (1 - p_stitching_votes) * filter_1.sum()
 
             if lbl0 != 0 and stitch_cell:  # only reassign if they overlap
                 stitched_mask1[filter_1] = lbl0

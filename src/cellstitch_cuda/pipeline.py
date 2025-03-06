@@ -22,7 +22,7 @@ def _split_label(image, num_pixels, limit):
 
     n = int(round(num_pixels / limit))
 
-    a = int(round(image.shape[0]/n))
+    a = int(round(image.shape[0] / n))
     b = image.shape[1]
     c = image.shape[2]
 
@@ -37,7 +37,7 @@ def _split_label(image, num_pixels, limit):
     return labels
 
 
-def split_labels(regions, limit, max_size, n_jobs: int = -1):
+def split_labels(regions, limit, n_jobs: int = -1):
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(_split_label)(
@@ -110,15 +110,20 @@ def correction(masks, n_jobs: int = -1):
 
     max_lbl = masks.max()
 
-    split_masks = split_labels(labels_list, int(round(mean_area)), size_limit, n_jobs=n_jobs)
+    split_masks = split_labels(
+        labels_list, int(round(mean_area)), size_limit, n_jobs=n_jobs
+    )
     for i, mask in enumerate(split_masks):
-        mask = np.where(mask > 1, mask + max_lbl - 1, labels_list[i].label) * labels_list[i].image
+        mask = (
+            np.where(mask > 1, mask + max_lbl - 1, labels_list[i].label)
+            * labels_list[i].image
+        )
         max_lbl = mask.max()
 
         masks[labels_list[i].slice] = np.where(
             masks[labels_list[i].slice] == labels_list[i].label,
             mask,
-            masks[labels_list[i].slice]
+            masks[labels_list[i].slice],
         )
 
     return masks
@@ -451,11 +456,13 @@ def cellstitch_cuda(
 
     if interpolation:
         if not pixel_size or not z_step:
-            print("Cannot determine anisotropy for interpolation. Defaulting to anisotropy = 2. Result might not be "
-                  "accurate.")
+            print(
+                "Cannot determine anisotropy for interpolation. Defaulting to anisotropy = 2. Result might not be "
+                "accurate."
+            )
             anisotropy = 2
         else:
-            anisotropy = int(round(z_step/pixel_size))
+            anisotropy = int(round(z_step / pixel_size))
         if anisotropy > 1:
             if verbose:
                 time_start = time.time()
@@ -469,7 +476,8 @@ def cellstitch_cuda(
                 print("Total time to interpolate:", time.time() - time_start)
             if output_masks:
                 tifffile.imwrite(
-                    os.path.join(output_path, "cellstitch_masks_interpolated.tif"), cellstitch_masks_interp
+                    os.path.join(output_path, "cellstitch_masks_interpolated.tif"),
+                    cellstitch_masks_interp,
                 )
             return cellstitch_masks, cellstitch_masks_interp
         else:
