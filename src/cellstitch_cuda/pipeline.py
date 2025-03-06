@@ -18,7 +18,7 @@ from cellstitch_cuda.alignment import *
 from cellstitch_cuda.preprocessing_cupy import *
 
 
-def _split_label(image, num_pixels, limit, max_size):
+def _split_label(image, num_pixels, limit):
 
     n = int(round(num_pixels / limit))
 
@@ -44,7 +44,6 @@ def split_labels(regions, limit, max_size, n_jobs: int = -1):
             region.image,
             region.num_pixels,
             limit,
-            max_size,
         )
         for region in regions
     )
