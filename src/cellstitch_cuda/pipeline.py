@@ -4,6 +4,7 @@ from skimage.measure import regionprops
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
 from scipy import ndimage as ndi
+from joblib import Parallel, delayed
 
 from cellstitch_cuda.alignment import _label_overlap
 from instanseg import InstanSeg
@@ -17,11 +18,9 @@ from cellstitch_cuda.alignment import *
 from cellstitch_cuda.preprocessing_cupy import *
 
 
-def split_label(region, limit, max_lbl):
+def _split_label(image, num_pixels, limit, max_size):
 
-    image = region.image
-
-    n = int(round(region.num_pixels / limit))
+    n = int(round(num_pixels / limit))
 
     a = int(round(image.shape[0]/n))
     b = image.shape[1]
@@ -35,9 +34,23 @@ def split_label(region, limit, max_lbl):
 
     labels = watershed(-distance, markers, mask=image)
 
-    mask = np.where(labels > 1, labels + max_lbl - 1, region.label) * image
 
-    return mask
+    return labels
+
+
+def split_labels(regions, limit, max_size, n_jobs: int = -1):
+
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_split_label)(
+            region.image,
+            region.num_pixels,
+            limit,
+            max_size,
+        )
+        for region in regions
+    )
+
+    return results
 
 
 def relabel_layer(masks, z, lbls):
@@ -57,7 +70,7 @@ def relabel_layer(masks, z, lbls):
         layer[layer == lbl] = lbl0
 
 
-def correction(masks):
+def correction(masks, n_jobs: int = -1):
     """Correct over- and undersegmentation
 
     This function first attempts to stitch any masks that are only 1 plane thick, then goes over the labels again to
@@ -92,10 +105,23 @@ def correction(masks):
 
     size_limit = int(round(mean_area + 3 * std_dev))
 
+    labels_list = []
     for region in regions:
         if region.num_pixels > size_limit:
-            mask = split_label(region, int(round(mean_area)), masks.max())
-            masks[region.slice] = np.where(masks[region.slice] == region.label, mask, masks[region.slice])
+            labels_list.append(region)
+
+    max_lbl = masks.max()
+
+    split_masks = split_labels(labels_list, int(round(mean_area)), size_limit, n_jobs=n_jobs)
+    for i, mask in enumerate(split_masks):
+        mask = np.where(mask > 1, mask + max_lbl - 1, labels_list[i].label) * labels_list[i].image
+        max_lbl = mask.max()
+
+        masks[labels_list[i].slice] = np.where(
+            masks[labels_list[i].slice] == labels_list[i].label,
+            mask,
+            masks[labels_list[i].slice]
+        )
 
     return masks
 
