@@ -34,7 +34,6 @@ def _split_label(image, num_pixels, limit, max_size):
 
     labels = watershed(-distance, markers, mask=image)
 
-
     return labels
 
 
@@ -219,7 +218,7 @@ def full_stitch(
 
     time_start = time.time()
 
-    xy_masks = correction(xy_masks)
+    xy_masks = correction(xy_masks, n_jobs=n_jobs)
 
     if verbose:
         print("Time to correct over- and undersegmentation: ", time.time() - time_start)
