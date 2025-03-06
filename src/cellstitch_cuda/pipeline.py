@@ -68,7 +68,7 @@ def relabel_layer(masks, z, lbls):
         layer[layer == lbl] = lbl0
 
 
-def correction(masks, n_jobs: int = -1):
+def correction(masks, x: int = 3, n_jobs: int = -1):
     """Correct over- and undersegmentation
 
     This function first attempts to stitch any masks that are only 1 plane thick, then goes over the labels again to
@@ -101,7 +101,7 @@ def correction(masks, n_jobs: int = -1):
     mean_area = np.mean(area)
     std_dev = np.std(area, ddof=1)
 
-    size_limit = int(round(mean_area + 3 * std_dev))
+    size_limit = int(round(mean_area + x * std_dev))
 
     labels_list = []
     for region in regions:
@@ -111,7 +111,7 @@ def correction(masks, n_jobs: int = -1):
     max_lbl = masks.max()
 
     split_masks = split_labels(
-        labels_list, int(round(mean_area)), size_limit, n_jobs=n_jobs
+        labels_list, int(round(mean_area)), n_jobs=n_jobs
     )
     for i, mask in enumerate(split_masks):
         mask = (
