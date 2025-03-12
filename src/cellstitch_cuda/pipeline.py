@@ -130,7 +130,7 @@ def correction(masks, x: int = 3, n_jobs: int = -1):
 
 
 def full_stitch(
-    xy_masks,
+    xy_masks_prior,
     yz_masks,
     xz_masks,
     nuclei=None,
@@ -152,7 +152,7 @@ def full_stitch(
         verbose: Verbosity. Default False
     """
 
-    xy_masks = np.array(xy_masks, dtype="uint32")
+    xy_masks = np.array(xy_masks_prior, dtype="uint32")
     num_frame = xy_masks.shape[0]
     prev_index = 0
 
