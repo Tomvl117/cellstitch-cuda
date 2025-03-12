@@ -51,7 +51,7 @@ def split_labels(regions, limit, n_jobs: int = -1):
     return results
 
 
-def relabel_layer(masks, z, lbls):
+def relabel_layer(masks, z, lbls, outpath=None):
     """
     Relabel the label in LBLS in layer Z of MASKS.
     """
@@ -61,14 +61,17 @@ def relabel_layer(masks, z, lbls):
     else:
         reference_layer = masks[z + 1]
 
-    overlap = _label_overlap(reference_layer, layer)
+    try:
+        overlap = _label_overlap(reference_layer, layer)
+    except:
+        overlap = _label_overlap(reference_layer, layer, mmap=True, outpath=outpath)
 
     for lbl in lbls:
         lbl0 = np.argmax(overlap[:, lbl])
         layer[layer == lbl] = lbl0
 
 
-def correction(masks, x: int = 3, n_jobs: int = -1):
+def correction(masks, x: int = 3, outpath=None, n_jobs: int = -1):
     """Correct over- and undersegmentation
 
     This function first attempts to stitch any masks that are only 1 plane thick, then goes over the labels again to
@@ -88,7 +91,7 @@ def correction(masks, x: int = 3, n_jobs: int = -1):
             layers_lbls.setdefault(region.bbox[0], []).append(region.label)
 
     for z, lbls in layers_lbls.items():
-        relabel_layer(masks, z, lbls)
+        relabel_layer(masks, z, lbls, outpath)
         cp._default_memory_pool.free_all_blocks()
 
     regions = regionprops(masks)
@@ -135,6 +138,7 @@ def full_stitch(
     xz_masks,
     nuclei=None,
     filter: bool = True,
+    outpath=None,
     n_jobs=-1,
     verbose=False,
 ):
@@ -226,7 +230,7 @@ def full_stitch(
 
     time_start = time.time()
 
-    xy_masks = correction(xy_masks, n_jobs=n_jobs)
+    xy_masks = correction(xy_masks, outpath=outpath, n_jobs=n_jobs)
 
     if verbose:
         print("Time to correct over- and undersegmentation: ", time.time() - time_start)
@@ -436,6 +440,7 @@ def cellstitch_cuda(
             xz_masks,
             nuclei,
             filter=filtering,
+            outpath=output_path,
             n_jobs=n_jobs,
             verbose=verbose,
         )
@@ -445,6 +450,7 @@ def cellstitch_cuda(
             yz_masks,
             xz_masks,
             filter=filtering,
+            outpath=output_path,
             n_jobs=n_jobs,
             verbose=verbose,
         )

@@ -3,6 +3,8 @@ import cupyx
 from skimage import color
 import matplotlib.pyplot as plt
 import numpy as np
+from tempfile import mkdtemp
+import os.path as path
 
 from cellstitch_cuda.frame import *
 from cellstitch_cuda.interpolate import get_mask_center_cupy
@@ -184,7 +186,7 @@ class FramePair:
         self.frame1 = Frame(stitched_mask1)
 
 
-def _label_overlap(x, y):
+def _label_overlap(x, y, mmap: bool = False, outpath=mkdtemp()):
     """Fast function to get pixel overlaps between masks in x and y.
 
     Args:
@@ -208,11 +210,18 @@ def _label_overlap(x, y):
     if isinstance(y, cp.ndarray):
         y = y.get()
 
-    overlap = np.zeros((1 + x.max(), 1 + y.max()), dtype=np.uint)
+    if not mmap:
+        overlap = np.zeros((1 + x.max(), 1 + y.max()), dtype=np.uint)
+    else:
+        filename = path.join(outpath, 'overlap.dat')
+        overlap = np.memmap(filename, dtype=np.uint, mode="w+", shape=(1 + x.max(), 1 + y.max()))
 
     # Count overlaps using vectorized operations
     # `np.add.at` adds 1 to the `overlap` matrix at the positions specified by the pairs of labels in `x` and `y`.
     # For example, if `x[i] = A` and `y[i] = B`, it increments `overlap[A, B]` by 1.
     np.add.at(overlap, (x, y), 1)
+
+    if mmap:
+        overlap.flush()
 
     return overlap
