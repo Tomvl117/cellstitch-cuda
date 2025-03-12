@@ -70,6 +70,8 @@ def relabel_layer(masks, z, lbls, outpath=None):
         lbl0 = np.argmax(overlap[:, lbl])
         layer[layer == lbl] = lbl0
 
+    del overlap
+
 
 def correction(masks, x: int = 3, outpath=None, n_jobs: int = -1):
     """Correct over- and undersegmentation

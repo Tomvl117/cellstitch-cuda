@@ -4,7 +4,7 @@ from skimage import color
 import matplotlib.pyplot as plt
 import numpy as np
 from tempfile import mkdtemp
-import os.path as path
+import os
 
 from cellstitch_cuda.frame import *
 from cellstitch_cuda.interpolate import get_mask_center_cupy
@@ -213,15 +213,17 @@ def _label_overlap(x, y, mmap: bool = False, outpath=mkdtemp()):
     if not mmap:
         overlap = np.zeros((1 + x.max(), 1 + y.max()), dtype=np.uint)
     else:
-        filename = path.join(outpath, 'overlap.dat')
+        filename = os.path.join(outpath, 'overlap.dat')
+        while os.path.isfile(filename):
+            try:
+                os.unlink(filename)
+            except:
+                pass
         overlap = np.memmap(filename, dtype=np.uint, mode="w+", shape=(1 + x.max(), 1 + y.max()))
 
     # Count overlaps using vectorized operations
     # `np.add.at` adds 1 to the `overlap` matrix at the positions specified by the pairs of labels in `x` and `y`.
     # For example, if `x[i] = A` and `y[i] = B`, it increments `overlap[A, B]` by 1.
     np.add.at(overlap, (x, y), 1)
-
-    if mmap:
-        overlap.flush()
 
     return overlap
