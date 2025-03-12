@@ -130,7 +130,7 @@ def correction(masks, x: int = 3, n_jobs: int = -1):
 
 
 def full_stitch(
-    xy_masks_prior,
+    xy_masks,
     yz_masks,
     xz_masks,
     nuclei=None,
@@ -152,7 +152,7 @@ def full_stitch(
         verbose: Verbosity. Default False
     """
 
-    xy_masks = np.array(xy_masks_prior, dtype="uint32")
+    xy_masks = np.array(xy_masks, dtype="uint32")
     num_frame = xy_masks.shape[0]
     prev_index = 0
 
@@ -202,6 +202,8 @@ def full_stitch(
     if verbose:
         print("Total time to stitch: ", time.time() - time_start)
 
+    del yz_masks, xz_masks
+
     if filter:
         cp._default_memory_pool.free_all_blocks()
         time_start = time.time()
@@ -219,6 +221,8 @@ def full_stitch(
         cp._default_memory_pool.free_all_blocks()
         if verbose:
             print("Time to filter cells with nuclei: ", time.time() - time_start)
+
+    del nuclei
 
     time_start = time.time()
 
