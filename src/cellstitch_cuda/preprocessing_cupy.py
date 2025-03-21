@@ -203,7 +203,7 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     nslices = d.shape[-1]
 
     vram = torch.cuda.mem_get_info()[0] / 1024  # In KB
-    vram_est = 0.1765 * np.prod(
+    vram_est = 0.2653 * np.prod(
         d.shape[0:3]
     )  # Magic number literally obtained by plotting in Excel
 
@@ -211,7 +211,7 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
     if vram < vram_est:
         small = False
         vram_est = (
-            0.1765 * tiles**2 * d.shape[0]
+            0.2653 * tiles**2 * d.shape[0]
         )  # Base VRAM estimate on batch size, multiplied by channels
         batch = int(vram / vram_est)
         if batch == 0:
@@ -219,7 +219,7 @@ def segmentation(d, model, m: str = "nuclei_cells", xy: bool = False):
                 "Not enough VRAM available for 1024x1024 tiles. Decreasing to standard 512x512."
             )
             tiles = 512
-            vram_est = 0.1765 * tiles**2 * d.shape[0]
+            vram_est = 0.2653 * tiles**2 * d.shape[0]
             batch = int(vram / vram_est)
             if batch == 0:
                 print("Not enough VRAM available for 512x512 tiles. Aborting.")
