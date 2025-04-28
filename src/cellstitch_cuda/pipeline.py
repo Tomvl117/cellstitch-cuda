@@ -367,12 +367,14 @@ def cellstitch_cuda(
             print("Finished bleach correction.")
 
     img = img.transpose(1, 2, 3, 0)  # ZCYX -> CYXZ
+    img_scaled = upscale_img(img, pixel=pixel_size, z_res=pixel_size)
 
     # Segment over Z-axis
     if verbose:
         print("Segmenting YX planes (Z-axis).")
 
-    yx_masks = segmentation(img, model, seg_mode, xy=True)
+    yx_masks = segmentation(img_scaled, model, seg_mode, xy=True)
+    yx_masks = downscale_mask(yx_masks, pixel=pixel_size, z_res=pixel_size)
     if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(2, 0, 1)  # YXZ -> ZYX
         yx_masks = yx_masks[0].transpose(2, 0, 1)  # YXZ -> ZYX
