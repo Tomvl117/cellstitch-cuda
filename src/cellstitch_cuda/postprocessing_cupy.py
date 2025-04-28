@@ -1,5 +1,3 @@
-import torch
-import cupy as cp
 import numpy as np
 import fill_voids
 from scipy.ndimage import find_objects

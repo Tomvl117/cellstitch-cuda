@@ -1,5 +1,4 @@
 import tifffile
-import os
 from skimage.measure import regionprops
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
