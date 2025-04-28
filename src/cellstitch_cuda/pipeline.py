@@ -138,7 +138,7 @@ def full_stitch(
     yz_masks,
     xz_masks,
     nuclei=None,
-    filter: bool = True,
+    filtering: bool = True,
     outpath=None,
     n_jobs=-1,
     verbose=False,
@@ -152,7 +152,7 @@ def full_stitch(
         yz_masks: numpy.ndarray with YZ masks
         xz_masks: numpy.ndarray with XZ masks
         nuclei: numpy.ndarray with XY masks of nuclei
-        filter: Use CellPose-based fill_holes_and_remove_small_masks() function. Default True
+        filtering: Use CellPose-based fill_holes_and_remove_small_masks() function. Default True
         n_jobs: Number of threads used. Set n_jobs to 1 for debugging parallel processing tasks. Default -1
         verbose: Verbosity. Default False
     """
@@ -209,7 +209,7 @@ def full_stitch(
 
     del yz_masks, xz_masks
 
-    if filter:
+    if filtering:
         cp._default_memory_pool.free_all_blocks()
         time_start = time.time()
         xy_masks = fill_holes_and_remove_small_masks(xy_masks, n_jobs=n_jobs)
