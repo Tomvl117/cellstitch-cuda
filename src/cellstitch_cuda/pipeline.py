@@ -372,7 +372,13 @@ def cellstitch_cuda(
     if verbose:
         print("Segmenting YX planes (Z-axis).")
 
+    cp._default_memory_pool.free_all_blocks()
     yx_masks = segmentation(img_scaled, model, seg_mode, xy=True)
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()  # Clear GPU cache
+
+    cp._default_memory_pool.free_all_blocks()
     yx_masks = downscale_mask(yx_masks, pixel=pixel_size, z_res=pixel_size)
     if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(2, 0, 1)  # YXZ -> ZYX
@@ -382,9 +388,6 @@ def cellstitch_cuda(
             tifffile.imwrite(os.path.join(output_path, "nuclei_masks.tif"), nuclei)
     else:
         yx_masks = yx_masks.transpose(2, 0, 1)  # YXZ -> ZYX
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()  # Clear GPU cache
 
     if output_masks:
         tifffile.imwrite(os.path.join(output_path, "yx_masks.tif"), yx_masks)
