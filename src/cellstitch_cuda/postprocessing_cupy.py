@@ -51,8 +51,8 @@ def fill_holes_and_remove_small_masks(masks, min_size=15, n_jobs=-1):
     # Filter small masks
     if min_size > 0:
         counts = np.bincount(masks.ravel())
-        filter = np.isin(masks, np.where(counts < min_size)[0])
-        masks[filter] = 0
+        small_filter = np.isin(masks, np.where(counts < min_size)[0])
+        masks[small_filter] = 0
 
     slices = find_objects(masks)
 
