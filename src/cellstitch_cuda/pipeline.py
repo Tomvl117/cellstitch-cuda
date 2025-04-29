@@ -455,7 +455,7 @@ def cellstitch_cuda(
             yx_masks,
             yz_masks,
             xz_masks,
-            filter=filtering,
+            filtering=filtering,
             outpath=output_path,
             n_jobs=n_jobs,
             verbose=verbose,
