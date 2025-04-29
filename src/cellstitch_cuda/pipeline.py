@@ -378,6 +378,8 @@ def cellstitch_cuda(
     cp._default_memory_pool.free_all_blocks()
     yx_masks = segmentation(img_scaled, model, seg_mode, xy=True)
 
+    del img_scaled
+
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
 
