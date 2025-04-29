@@ -249,6 +249,7 @@ def cellstitch_cuda(
     bleach_correct: bool = True,
     filtering: bool = True,
     interpolation: bool = False,
+    use_disk_cache: bool = False,
     n_jobs: int = -1,
     verbose: bool = False,
 ):
@@ -283,6 +284,8 @@ def cellstitch_cuda(
             interpolated volumetric masks. CellStitch provides an interpolation method to turn anisotropic masks into
             pseudo-isotropic masks. The algorithm, adapted from the original codebase, has been completely rewritten for
             efficient parallel processing. Outputs a separate mask in the output folder if `output_masks` = True.
+            Default False
+        use_disk_cache: If set to True, write masks to file remove them from memory.
             Default False
         n_jobs: Set the number of threads to be used in parallel processing tasks. Use 1 for debugging. Generally, best
             left at the default value.
@@ -384,13 +387,17 @@ def cellstitch_cuda(
         nuclei = yx_masks[1].transpose(2, 0, 1)  # YXZ -> ZYX
         yx_masks = yx_masks[0].transpose(2, 0, 1)  # YXZ -> ZYX
 
-        if output_masks:
+        if output_masks or use_disk_cache:
             tifffile.imwrite(os.path.join(output_path, "nuclei_masks.tif"), nuclei)
+        if use_disk_cache:
+            del nuclei
     else:
         yx_masks = yx_masks.transpose(2, 0, 1)  # YXZ -> ZYX
 
-    if output_masks:
+    if output_masks or use_disk_cache:
         tifffile.imwrite(os.path.join(output_path, "yx_masks.tif"), yx_masks)
+    if use_disk_cache:
+        del yx_masks
 
     # Segment over X-axis
     if verbose:
@@ -408,8 +415,10 @@ def cellstitch_cuda(
         1, 0, 2
     )  # YZX -> ZYX
     cp._default_memory_pool.free_all_blocks()
-    if output_masks:
+    if output_masks or use_disk_cache:
         tifffile.imwrite(os.path.join(output_path, "yz_masks.tif"), yz_masks)
+    if use_disk_cache:
+        del yz_masks
 
     # Segment over Y-axis
     if verbose:
@@ -439,13 +448,19 @@ def cellstitch_cuda(
     if verbose:
         print("Running CellStitch stitching...")
 
+    if use_disk_cache:
+        yx_masks = tifffile.imread(os.path.join(output_path, "yx_masks.tif"))
+        yz_masks = tifffile.imread(os.path.join(output_path, "yz_masks.tif"))
+        if seg_mode == "nuclei_cells":
+            nuclei = tifffile.imread(os.path.join(output_path, "nuclei_masks.tif"))
+
     if seg_mode == "nuclei_cells":
         cellstitch_masks = full_stitch(
             yx_masks,
             yz_masks,
             xz_masks,
             nuclei,
-            filter=filtering,
+            filtering=filtering,
             outpath=output_path,
             n_jobs=n_jobs,
             verbose=verbose,
