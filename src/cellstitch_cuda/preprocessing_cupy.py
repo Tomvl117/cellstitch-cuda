@@ -180,10 +180,8 @@ def segment_batch_slice_small(d, model):
             )
         res = instances.cpu()
         result.append(res.numpy().astype("uint32"))
-    result = [
-        k for b in result for k in b
-    ]  # For each z plane found in each batch b in result, stack the z planes
-    result = np.stack(result).transpose(
+    result = np.concatenate(result, axis=0)
+    result = result.transpose(
         1, 2, 3, 0
     )  # ZcYX --> cYXZ || kcij --> cijk (for iterator k)
 
