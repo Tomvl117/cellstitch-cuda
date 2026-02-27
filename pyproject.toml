@@ -18,23 +18,23 @@ classifiers = [
 ]
 keywords = ["3D labeling", "cell labels", "2D stitching"]
 dependencies = [
-    "instanseg-torch>=0.0.6",
-    "cellpose>=3.1.0",
+    "instanseg-torch>=0.1.1",
+    "cellpose>=4.0.8",
     "POT>=0.8.1",
     "sphinx",
     "sphinxcontrib-apidoc",
     "tifffile",
-    "numpy<2.0.0",
+    "numpy",
     "cupy-cuda12x",
     "joblib",
     "fill-voids",
 ]
-requires-python = ">=3.9, <3.12"
+requires-python = ">=3.10, <3.12"
 urls = { "Homepage" = "https://github.com/Tomvl117/cellstitch-cuda" }
 
 [tool.black]
 line-length = 88
-target-version = ['py39', 'py310', 'py311']
+target-version = ['py310', 'py311']
 
 [tool.bumpver]
 current_version = "1.5.4"

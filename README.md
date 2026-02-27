@@ -52,9 +52,9 @@ conda activate cellstitch-cuda
 ```bash
 pip install cellstitch-cuda
 pip uninstall torch
-conda install pytorch pytorch-cuda=12.4 -c conda-forge -c pytorch -c nvidia
+pip install torch --index-url https://download.pytorch.org/whl/cu126
 ```
-You may replace the version number for `pytorch-cuda` with whatever is applicable for you.
+You may replace the version number for `pytorch`'s `--index-url` with whatever is applicable for you.
 #### Additional steps for CUDA 11.x
 ```bash
 pip uninstall cupy-cuda12x
