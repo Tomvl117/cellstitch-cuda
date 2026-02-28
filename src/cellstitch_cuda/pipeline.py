@@ -19,11 +19,11 @@ from cellstitch_cuda.preprocessing_cupy import *
 
 def _split_label(image, num_pixels, limit):
 
-    n = int(round(num_pixels / limit))
+    n = int(round(num_pixels / limit)) or 1
 
-    a = int(round(image.shape[0] / n))
-    b = image.shape[1]
-    c = image.shape[2]
+    a = int(round(image.shape[0] / n)) or 1
+    b = image.shape[1] or 1
+    c = image.shape[2] or 1
 
     distance = ndi.distance_transform_edt(image)
     max_coords = peak_local_max(distance, labels=image, footprint=np.ones((a, b, c)))
