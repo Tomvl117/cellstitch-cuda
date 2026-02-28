@@ -120,9 +120,7 @@ class FramePair:
         soft_matching = cp.zeros((n, m))
 
         # Vectorized computation
-        matched_indices = plan.argmax(
-            axis=1
-        )
+        matched_indices = plan.argmax(axis=1)
         soft_matching[cp.arange(n), matched_indices] = 1
 
         mask1 = cp.asarray(self.frame1.mask)
@@ -212,13 +210,15 @@ def _label_overlap(x, y, mmap: bool = False, outpath=mkdtemp()):
     if not mmap:
         overlap = np.zeros((1 + x.max(), 1 + y.max()), dtype=np.uint)
     else:
-        filename = os.path.join(outpath, 'overlap.dat')
+        filename = os.path.join(outpath, "overlap.dat")
         while os.path.isfile(filename):
             try:
                 os.unlink(filename)
             except:
                 pass
-        overlap = np.memmap(filename, dtype=np.uint, mode="w+", shape=(1 + x.max(), 1 + y.max()))
+        overlap = np.memmap(
+            filename, dtype=np.uint, mode="w+", shape=(1 + x.max(), 1 + y.max())
+        )
 
     # Count overlaps using vectorized operations
     # `np.add.at` adds 1 to the `overlap` matrix at the positions specified by the pairs of labels in `x` and `y`.

@@ -114,9 +114,7 @@ def correction(masks, x: int = 3, outpath=None, n_jobs: int = -1):
 
     max_lbl = masks.max()
 
-    split_masks = split_labels(
-        labels_list, int(round(mean_area)), n_jobs=n_jobs
-    )
+    split_masks = split_labels(labels_list, int(round(mean_area)), n_jobs=n_jobs)
     for i, mask in enumerate(split_masks):
         mask = (
             np.where(mask > 1, mask + max_lbl - 1, labels_list[i].label)

@@ -13,7 +13,6 @@ This is the bare minimum to run CUDA-accelerated CellStitch. Per the default set
 
 from cellstitch_cuda.pipeline import cellstitch_cuda
 
-
 img = r"path/to/image.tif"
 
 masks = cellstitch_cuda(img)

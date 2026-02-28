@@ -11,7 +11,6 @@ from skimage.metrics import variation_of_information
 
 from cellstitch_cuda.alignment import *
 
-
 # --------------------
 # Helper functions
 # --------------------

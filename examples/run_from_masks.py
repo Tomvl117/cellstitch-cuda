@@ -10,7 +10,6 @@ import os
 from cellpose.utils import stitch3D
 from cellstitch_cuda.pipeline import full_stitch
 
-
 stitch_method = "cellstitch"  # "iou" or "cellstitch"
 file_path_yx_masks = r"path/to/yx_masks.tif"
 file_path_yz_masks = r"path/to/yz_masks.tif"
