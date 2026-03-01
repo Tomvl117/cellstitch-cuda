@@ -382,7 +382,7 @@ def cellstitch_cuda(
         torch.cuda.empty_cache()  # Clear GPU cache
 
     cp._default_memory_pool.free_all_blocks()
-    yx_masks = downscale_mask(yx_masks, pixel=pixel_size, z_res=pixel_size)
+    yx_masks = downscale_mask(yx_masks, img_shape=img.shape[1:])
     if seg_mode == "nuclei_cells":
         nuclei = yx_masks[1].transpose(2, 0, 1)  # YXZ -> ZYX
         yx_masks = yx_masks[0].transpose(2, 0, 1)  # YXZ -> ZYX
@@ -403,6 +403,7 @@ def cellstitch_cuda(
     if verbose:
         print("Segmenting YZ planes (X-axis).")
     transposed_img = img.transpose(0, 1, 3, 2)  # CYXZ -> CYZX
+    img_shape = transposed_img.shape[1:]
     transposed_img = upscale_img(
         transposed_img, pixel_size, z_step
     )  # Preprocess YZ planes
@@ -411,7 +412,7 @@ def cellstitch_cuda(
     del transposed_img
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    yz_masks = downscale_mask(yz_masks, pixel_size, z_step).transpose(
+    yz_masks = downscale_mask(yz_masks, img_shape).transpose(
         1, 0, 2
     )  # YZX -> ZYX
     cp._default_memory_pool.free_all_blocks()
@@ -425,6 +426,7 @@ def cellstitch_cuda(
         print("Segmenting XZ planes (Y-axis).")
     transposed_img = img.transpose(0, 2, 3, 1)  # CYXZ -> CXZY
     del img
+    img_shape = transposed_img.shape[1:]
     transposed_img = upscale_img(
         transposed_img, pixel_size, z_step
     )  # Preprocess XZ planes
@@ -433,7 +435,7 @@ def cellstitch_cuda(
     del transposed_img
     if torch.cuda.is_available():
         torch.cuda.empty_cache()  # Clear GPU cache
-    xz_masks = downscale_mask(xz_masks, pixel_size, z_step).transpose(
+    xz_masks = downscale_mask(xz_masks, img_shape).transpose(
         1, 2, 0
     )  # XZY -> ZYX
     cp._default_memory_pool.free_all_blocks()

@@ -7,11 +7,7 @@ import sys
 from cupyx.scipy.ndimage import zoom
 
 
-def downscale_mask(masks, pixel=None, z_res=None):
-    if not pixel:
-        pixel = 1
-    if not z_res:
-        z_res = 1
+def downscale_mask(masks, img_shape: tuple = None):
 
     if masks.max() < 256:
         masks = masks.astype("uint8")
@@ -24,8 +20,7 @@ def downscale_mask(masks, pixel=None, z_res=None):
 
     dtype = masks.dtype
 
-    anisotropy = z_res / pixel
-    zoom_factors = (1 / (pixel / 0.5), 1 / (anisotropy * (pixel / 0.5)), 1)
+    zoom_factors = tuple(np.array(img_shape) / np.array(masks.shape))
     order = 0  # 0 nearest neighbor, 1 bilinear, 2 quadratic, 3 bicubic
 
     masks = zoom(masks, zoom_factors, order=order, output=dtype).get()
