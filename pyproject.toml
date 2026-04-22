@@ -19,7 +19,7 @@ classifiers = [
 keywords = ["3D labeling", "cell labels", "2D stitching"]
 dependencies = [
     "instanseg-torch>=0.1.1",
-    "cellpose>=4.0.8",
+    "cellpose>=3",
     "POT>=0.8.1",
     "sphinx",
     "sphinxcontrib-apidoc",
