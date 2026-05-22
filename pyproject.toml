@@ -7,25 +7,25 @@ name = "cellstitch-cuda"
 version = "1.5.7"
 description = "CUDA-accelerated CellStitch 3D labeling using Instanseg segmentation."
 readme = "README.md"
-authors = [{name = "Tom van Leeuwen", email = "tom@tleeuwen.nl"}]
+authors = [{ name = "Tom van Leeuwen", email = "tom@tleeuwen.nl" }]
 classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 11",
     "Environment :: GPU :: NVIDIA CUDA :: 12",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Operating System :: Microsoft :: Windows",
-    "Topic :: Scientific/Engineering :: Image Processing"
+    "Topic :: Scientific/Engineering :: Image Processing",
 ]
 keywords = ["3D labeling", "cell labels", "2D stitching"]
 dependencies = [
     "instanseg-torch>=0.1.1",
-    "cellpose>=4.0.8",
+    "cellpose>=3",
     "POT>=0.8.1",
     "sphinx",
     "sphinxcontrib-apidoc",
     "tifffile",
     "numpy",
-    "cupy-cuda12x",
+    "cupy-cuda12x; extra != \"cuda11\"",
     "joblib",
     "fill-voids",
 ]
@@ -47,7 +47,7 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-"pyproject.toml" = [
-    '^version = "{version}"',
-    '^current_version = "{version}"',
-]
+"pyproject.toml" = ['^version = "{version}"', '^current_version = "{version}"']
+
+[project.optional-dependencies]
+cuda11 = ["cupy-cuda11x"]
